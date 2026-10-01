@@ -1,156 +1,199 @@
 # Project Sovereign
 
-A [Bun](https://bun.sh) monorepo with a Next.js frontend and a Hono/Prisma
-backend, backed by PostgreSQL.
+An operational backbone for managing deliverables of high-value projects.
+
+It is a [Bun](https://bun.sh) monorepo: a Next.js frontend and a Hono/Prisma
+backend over PostgreSQL. The delivered slice so far is a task resource — enough
+end-to-end wiring (schema, API, validation, UI, containers, docs) to build the
+rest on top of.
+
+## Stack
+
+| Workspace       | Built with                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/frontend` | Next.js 16 (App Router) · React 19 · Tailwind 4 · shadcn/ui on Radix · TanStack Query 5 + Axios · Zustand 5 · React Hook Form + Zod · Biome |
+| `apps/backend`  | Hono on Bun · Prisma 7.10 (driver adapter) · PostgreSQL · `@nodewave/prisma-ezfilter` · Zod                                                 |
+| Root            | Bun workspace · TypeScript 5.9 · Husky · Commitlint                                                                                         |
+
+Versions are pinned deliberately. Treat them as fixed unless someone says
+otherwise.
 
 ## Layout
 
 ```
 project-sovereign/
 ├── apps/
-│   ├── frontend/    # Next.js 16 · React 19 · Tailwind 4 · shadcn (Radix)
-│   └── backend/     # Hono on Bun · Prisma 7 · PostgreSQL · prisma-ezfilter
+│   ├── frontend/     # Next.js web client
+│   └── backend/      # Hono API server + Prisma data layer
 ├── docs/
-│   └── AGENTS.md    # Conventions for AI agents and human collaborators
-├── .husky/          # pre-commit (Biome) + commit-msg (Commitlint)
-├── commitlint.config.mjs
-├── package.json     # Bun workspace root
-└── tsconfig.base.json   # shared TS policy — both apps extend this
+│   └── AGENTS.md     # Conventions and gotchas — read this before changing anything
+├── .husky/           # pre-commit (Biome) + commit-msg (Commitlint)
+├── compose.yaml      # Container stack, production-style images
+├── compose.dev.yaml  # Container stack, live hot reload
+├── tsconfig.base.json # shared TypeScript policy — both apps extend this
+└── package.json      # Bun workspace root
 ```
 
-## TypeScript
+## Running it
 
-`tsconfig.base.json` at the repo root holds the shared compiler policy
-(`strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`,
-`noFallthroughCasesInSwitch`, `verbatimModuleSyntax`, and friends). Both
-`apps/frontend` and `apps/backend` extend it, so a flag added there applies
-everywhere. Each app then declares only what it cannot inherit — the frontend
-adds `jsx`, `lib`, `plugins`, and the `.next/types` include; the backend adds
-`types: ["bun"]`.
+### With containers (nothing to install but podman)
 
-See [`docs/AGENTS.md`](./docs/AGENTS.md) for which overrides are mandatory and
-why.
+```bash
+export PATH="$HOME/.local/bin:$PATH"      # if podman-compose landed there
+podman-compose -f compose.dev.yaml up --build
+```
 
-## Prerequisites
+Then open <http://localhost:3000>. The database, API and UI all come up
+together, migrations are applied automatically, and edits to `apps/*` reload
+live — the frontend through `next dev`, the backend through `bun --watch`.
 
-- **Bun** `>= 1.4.2`
-- **Podman** (for the local PostgreSQL, and for the container stacks; the backend exits at boot if it cannot connect)
-- **podman-compose** (only if you want to use the container stacks below; see [Containers](#containers))
+```bash
+podman-compose -f compose.dev.yaml logs -f backend   # follow one service
+podman-compose -f compose.dev.yaml down              # stop, keep the data
+podman-compose -f compose.dev.yaml down -v           # stop and delete the data
+```
 
-## Getting started
+`compose.yaml` is the alternative: it builds real images and serves compiled
+artefacts. Use it to confirm a build works and that migrations apply from
+scratch. The two bind the same ports, so only one can run at a time.
+
+### On the host
+
+Needs Bun and podman (for PostgreSQL only).
 
 ```bash
 bun install
-
-bun run db:up           # start PostgreSQL in podman on 127.0.0.1:5432
-                         # prints the matching DATABASE_URL
-
+bun run db:up                          # PostgreSQL on 127.0.0.1:5432
 cp apps/backend/.env.example apps/backend/.env
 cp apps/frontend/.env.example apps/frontend/.env.local
-
-bun run db:generate     # generate the Prisma client
-bun run db:migrate      # apply migrations
-bun run db:seed         # optional sample data
-
-bun run dev:backend     # :3001
-bun run dev:frontend    # :3000
+bun run db:generate && bun run db:migrate
+bun run dev:backend                    # :3001
+bun run dev:frontend                   # :3000
 ```
 
-### Local database
+### A few things that will save you time
 
-`bun run db:up` starts a PostgreSQL 18 container (`project-sovereign-postgres`)
-with a named volume (`project-sovereign-pgdata`), bound to `127.0.0.1:5432` so it
-is not exposed beyond the host's loopback. It is idempotent — run it as often as
-you like.
+- **Only one PostgreSQL can hold port 5432.** If a compose stack is running, or
+  you are switching between it and `bun run db:up`, stop one first.
+- **`podman compose` may not work** — on some setups it delegates to
+  `docker-compose`, which needs a Docker socket podman does not provide. Use
+  `podman-compose`.
+- **Migrations apply on backend boot** in both container stacks, so a fresh
+  volume needs no manual step. `SKIP_MIGRATIONS=1` bypasses it. On the host you
+  run them yourself.
+- **The backend exits if it cannot reach PostgreSQL** rather than starting and
+  failing later. That is intentional.
+- **The backend must generate its Prisma client before typechecking.** Run
+  `bun run db:generate` after any schema change.
+- **A healthy `/api/health` does not mean the schema exists.** It only proves
+  the database is reachable. If writes fail, check whether migrations ran.
 
-The container must be started with **both** `POSTGRES_DB` (so the database
-exists) and a `-p` host mapping (or nothing can reach it from the host). A
-container started with neither will be running and still unreachable, and the
-backend will exit with `Database unreachable at startup`.
+## Commands
 
-## Containers
+From the repo root:
 
-The whole stack — PostgreSQL, backend and frontend — can run inside podman, so a
-collaborator needs only podman and a clone. Nothing has to be installed on the
-host.
+| Command                | Does                                    |
+| ---------------------- | --------------------------------------- |
+| `bun run dev:backend`  | API on :3001, reloads on change         |
+| `bun run dev:frontend` | UI on :3000                             |
+| `bun run build`        | Build both workspaces                   |
+| `bun run typecheck`    | Type-check both workspaces              |
+| `bun run lint`         | Lint and format-check (frontend)        |
+| `bun run test`         | Run tests (backend only)                |
+| `bun run clean`        | Remove build output                     |
+| `bun run db:up`        | Start local PostgreSQL (idempotent)     |
+| `bun run db:generate`  | Generate the Prisma client              |
+| `bun run db:migrate`   | Apply migrations (`migrate dev`)        |
+| `bun run db:seed`      | Sample data, safe to re-run             |
+| `bun run db:reset`     | Drop everything and re-apply migrations |
+| `bun run db:studio`    | Prisma Studio                           |
 
-```bash
-podman-compose -f compose.dev.yaml up --build   # hot-reloading dev stack
-```
+Per app, run from its directory:
 
-Then open <http://localhost:3000>. Edit any file in `apps/frontend` or
-`apps/backend` and save: the container picks it up without a restart. The
-frontend runs `next dev` (Turbopack) and the backend runs `bun --watch`.
+| `apps/frontend`            | `apps/backend`        |
+| -------------------------- | --------------------- |
+| `dev` `build` `start`      | `dev` `start` `build` |
+| `typecheck`                | `typecheck`           |
+| `lint` `lint:fix` `format` | `test`                |
+| `clean`                    | `db:*` `clean`        |
 
-```bash
-podman-compose -f compose.dev.yaml logs -f backend   # follow the backend
-podman-compose -f compose.dev.yaml down              # stop, keep the database
-podman-compose -f compose.dev.yaml down -v           # stop and delete the database
-```
-
-There is also a production-style stack that builds real images and serves
-compiled artefacts instead of watching sources:
-
-```bash
-podman-compose -f compose.yaml up --build
-```
-
-The two stacks are **alternatives** — they bind the same ports, so only one can
-run at a time. `compose.yaml` is for checking that a build works and that
-migrations apply from scratch; `compose.dev.yaml` is for day-to-day work.
-
-Things worth knowing:
-
-- **Only one PostgreSQL can hold port 5432.** If you use `bun run db:up` on the
-  host, stop it first: `podman stop project-sovereign-postgres`.
-- **`podman compose` may not work.** On some setups it delegates to
-  `docker-compose`, which needs a Docker socket that podman does not provide.
-  `podman-compose` works. On this machine it came from `uv tool install
-  podman-compose`, which puts it in `~/.local/bin` rather than on `PATH`.
-- **Migrations apply automatically** when the backend boots, on both stacks. A
-  fresh volume converges to the checked-in schema with no manual step. Set
-  `SKIP_MIGRATIONS=1` to bypass it.
-- **Images must use fully-qualified names.** Podman rejects short names, so the
-  Dockerfiles say `docker.io/oven/bun:1.4.2-alpine` and
-  `docker.io/library/postgres:18-alpine`.
-- The dev stack deliberately runs as **root** so it can write to the bind-mounted
-  source. That is fine for local testing and is not a hardened configuration.
-
-## Scripts
-
-| Command               | Description                                    |
-| --------------------- | ---------------------------------------------- |
-| `bun run dev:frontend`| Frontend dev server (Next.js, :3000)           |
-| `bun run dev:backend` | Backend dev server (Hono on Bun, :3001)        |
-| `bun run build`       | Build both workspaces                          |
-| `bun run typecheck`   | Type-check both workspaces                     |
-| `bun run lint`        | Biome (frontend)                               |
-| `bun run test`        | `bun test` (backend)                           |
-| `bun run db:up`       | Start local PostgreSQL in podman               |
-| `bun run db:generate` | `prisma generate`                              |
-| `bun run db:migrate`  | `prisma migrate dev`                           |
-| `bun run db:seed`     | Idempotent sample data                         |
-| `bun run db:reset`    | Drop and re-apply all migrations               |
-
-Container stacks are run with `podman-compose`, not with `bun` — see [Containers](#containers).
+There is **no frontend test runner** configured. `bun run test` covers the
+backend; do not report frontend tests as passing.
 
 ## API
 
-Base URL `http://localhost:3001/api`.
+Base URL `http://localhost:3001/api`. Tasks are paginated, filterable and
+sortable.
 
-| Method   | Path            | Description                                       |
-| -------- | --------------- | ------------------------------------------------- |
-| `GET`    | `/health`       | Liveness probe                                    |
-| `GET`    | `/tasks`        | Paginated list — `page`, `rows`, `orderKey`, `orderRule`, `status`, `search` |
-| `POST`   | `/tasks`        | Create a task                                     |
-| `GET`    | `/tasks/:id`    | Fetch one task                                    |
-| `PATCH`  | `/tasks/:id`    | Update a task                                     |
-| `DELETE` | `/tasks/:id`    | Delete a task                                     |
+| Method   | Path         | Does                                                               |
+| -------- | ------------ | ------------------------------------------------------------------ |
+| `GET`    | `/health`    | Liveness                                                           |
+| `GET`    | `/tasks`     | List — `page`, `rows`, `status`, `search`, `orderKey`, `orderRule` |
+| `POST`   | `/tasks`     | Create                                                             |
+| `GET`    | `/tasks/:id` | Fetch one                                                          |
+| `PATCH`  | `/tasks/:id` | Update                                                             |
+| `DELETE` | `/tasks/:id` | Delete                                                             |
 
-Lists return `{ data, meta: { page, rows, total, pageCount } }`.
-Errors return `{ error: { code, message, details? } }`.
+Lists return `{ data, meta: { page, rows, total, pageCount } }`. Failures
+always return `{ error: { code, message, details? } }`, including 400s — the
+envelope is uniform so the client has one shape to handle.
 
-## Contributing
+## Working on this repo
 
-Read [`docs/AGENTS.md`](./docs/AGENTS.md) first. Commits must follow
-Conventional Commits and are validated by Commitlint.
+The short version; [`docs/AGENTS.md`](./docs/AGENTS.md) has the reasoning and
+the traps in full.
+
+**Tooling**
+
+- Use `bun` for everything. Never `npm`, `yarn` or `pnpm`, and never hand-edit
+  `bun.lock`.
+- **Never `bunx prisma`.** It fetches a newer release candidate and pairs it
+  with the pinned client. Use the workspace scripts.
+- Do not upgrade Bun, Next.js, Prisma or TypeScript without asking.
+- Packages used by both apps live in the root `package.json`; app-specific
+  packages live in that app's. Not both.
+
+**Before you call something done**
+
+```bash
+bun run typecheck && bun run lint && bun run test && bun run build
+```
+
+If you touched a Dockerfile or compose file, also bring the stack up on a
+**fresh volume** and exercise the API. Building an image is not the same as it
+working.
+
+**Conventions**
+
+- ESM only. Type-only imports use `import type`.
+- Strict TypeScript is inherited from `tsconfig.base.json`. Add compiler flags
+  there, not in one app — both extend it, and `extends` replaces keys rather
+  than merging them.
+- Server data belongs in TanStack Query. Zustand holds ephemeral UI state only.
+  Do not mirror API responses into a store.
+- Zod validates on both sides. The client for fast feedback, the server because
+  a client check is never a boundary.
+- Never commit `.env`, `node_modules`, build output or generated clients.
+- Comments explain *why*, not *what*.
+- The API contract is deliberately duplicated — the backend's `schemas.ts` is
+  the source of truth and the frontend mirrors it. Change both in one commit.
+
+## Before you push
+
+- Commits follow Conventional Commits; Commitlint enforces it through a hook.
+- The pre-commit hook lints staged frontend files. If it blocks you, run
+  `bun run --cwd apps/frontend lint:fix`.
+- Ask before pushing, and before pushing to `master` specifically.
+- Do not amend, rebase or force-push anything already pushed.
+
+## Notes
+
+- The local PostgreSQL image is `postgres:latest`, while the compose stacks pin
+  `postgres:18-alpine`. Version drift between them is expected; do not rely on
+  a specific minor version locally.
+- Container images use fully-qualified names (`docker.io/oven/bun:...`) because
+  podman rejects short ones.
+- Dev containers run as root so they can write to bind-mounted source. That is a
+  convenience for local work, not a hardened configuration.
+- `.env` files are yours. Copy the `.env.example` templates and keep the real
+  ones out of git.
