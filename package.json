@@ -1,0 +1,48 @@
+{
+  "name": "project-sovereign",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Project Sovereign is an operational backbone for managing deliverables of high-value projects.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "bun@1.4.2",
+  "scripts": {
+    "dev:frontend": "bun run --cwd apps/frontend dev",
+    "dev:backend": "bun run --cwd apps/backend dev",
+    "build": "bun run --filter '*' build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "lint": "bun run --filter '*' lint",
+    "test": "bun run --filter '*' test",
+    "prepare": "husky",
+    "db:up": "bun run --cwd apps/backend db:up",
+    "db:generate": "bun run --cwd apps/backend db:generate",
+    "db:migrate": "bun run --cwd apps/backend db:migrate",
+    "db:seed": "bun run --cwd apps/backend db:seed",
+    "db:reset": "bun run --cwd apps/backend db:reset",
+    "db:studio": "bun run --cwd apps/backend db:studio",
+    "clean": "bun run --filter '*' clean"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@types/node": "^20.19.43",
+    "husky": "^9.1.7",
+    "typescript": "^5.9.3"
+  },
+  "ignoreScripts": [
+    "sharp",
+    "unrs-resolver"
+  ],
+  "trustedDependencies": [
+    "sharp",
+    "unrs-resolver"
+  ]
+}

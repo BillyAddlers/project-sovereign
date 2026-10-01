@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The shared base declares `lib: ["ESNext"]`, which has no DOM. React and
+    // Next both need it — without this override `document`, `HTMLElement`,
+    // `MutationObserver` and friends become unresolved names. It only fails
+    // once someone writes code that touches a browser global, so it looks
+    // redundant right up until it isn't. Do not remove.
+    "lib": ["dom", "dom.iterable", "esnext"],
+
+    // Required by Next: without it every .tsx file fails with
+    // "TS17004: Cannot use JSX unless the '--jsx' flag is provided".
+    "jsx": "react-jsx",
+
+    // Next's IDE plugin: route/segment validation and 'use client' checks.
+    "plugins": [{ "name": "next" }],
+
+    // Enables incremental type checking across runs.
+    "incremental": true,
+
+    // The `@/*` import alias used throughout src/. Paths declared here resolve
+    // relative to THIS file, not the base.
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    // Required: Next's generated route types (PageProps, LayoutProps,
+    // RouteContext) and, with `typedRoutes` enabled, the Route union.
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules", ".next"]
+}

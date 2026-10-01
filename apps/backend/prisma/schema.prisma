@@ -1,0 +1,41 @@
+// Project Sovereign — data model.
+// Docs: https://pris.ly/d/prisma-schema
+//
+// Connection details are intentionally absent: Prisma 7 connects through a
+// driver adapter (see src/lib/prisma.ts), and the CLI reads the URL from
+// prisma7.config.ts.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
+model Task {
+  id          String       @id @default(uuid()) @db.Uuid
+  title       String       @db.VarChar(200)
+  description String?      @db.Text
+  status      TaskStatus   @default(todo)
+  priority    TaskPriority @default(medium)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("tasks")
+}

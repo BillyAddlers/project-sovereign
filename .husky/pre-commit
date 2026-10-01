@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+
+# Lint only the files staged for this commit, so the hook stays fast and never
+# blocks on unrelated pre-existing issues elsewhere in the tree.
+#
+# Biome is configured in apps/frontend, so the hook runs the workspace-local
+# binary from that directory and strips the repo-root prefix from each path.
+
+files=$(git diff --cached --name-only --diff-filter=ACMR -- 'apps/frontend/**' | sed 's|^apps/frontend/||')
+
+if [ -z "$files" ]; then
+  exit 0
+fi
+
+cd apps/frontend || exit 1
+
+# shellcheck disable=SC2086
+exec bun run biome check \
+  --files-ignore-unknown=true \
+  --no-errors-on-unmatched \
+  $files

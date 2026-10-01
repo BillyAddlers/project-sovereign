@@ -1,0 +1,23 @@
+# Keep build context small and prevent host artefacts from leaking into images.
+# Everything here is either restored by `bun install` inside the build or
+# regenerated during the build.
+
+.git
+.gitignore
+.husky
+
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/.turbo
+
+# Real secrets never enter an image.
+apps/backend/.env
+apps/frontend/.env.local
+
+# Compose is not needed to build the images.
+compose.yaml
+**/Dockerfile
+
+*.log

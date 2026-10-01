@@ -1,0 +1,117 @@
+# Hot-reload development stack.
+#
+#   podman-compose -f compose.dev.yaml up --build
+#
+# Edit files on the host and both services reload. This is an ALTERNATIVE to
+# compose.yaml (production images, no source mount) — do not run both at once,
+# since they bind the same host ports.
+#
+# How hot reload works here:
+#   * The app source directories are bind-mounted into the containers, so a save on
+#     the host is visible inside immediately.
+#   * node_modules is NOT bind-mounted. The host tree was installed for the host
+#     platform and Bun's store layout, and it would shadow the image's own copy.
+#     Anonymous volumes, seeded from the image, keep the container's node_modules
+#     visible at those paths.
+#   * The backend runs `bun --watch`; the frontend runs `next dev` (Turbopack).
+#   * Migrations still apply on backend boot, so a fresh volume just works.
+#
+# The dev containers intentionally run as root. Bind-mounted host directories are
+# owned by your host user, and a non-root container user cannot write to them —
+# which breaks `prisma generate` and the Next build cache. Do not reuse these
+# images for anything you intend to expose.
+
+name: project-sovereign-dev
+
+services:
+  db:
+    image: docker.io/library/postgres:18-alpine
+    container_name: project-sovereign-dev-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: project_sovereign
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - dev-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: dev
+    image: localhost/project-sovereign-backend:dev-container
+    container_name: project-sovereign-dev-backend
+    environment:
+      DATABASE_URL: postgresql://admin:password@db:5432/project_sovereign?schema=public
+      PORT: 3001
+      CORS_ORIGIN: http://localhost:3000
+      NODE_ENV: development
+      LOG_LEVEL: debug
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      # Live source.
+      - ./apps/backend:/app/apps/backend
+      - ./apps/frontend/package.json:/app/apps/frontend/package.json:ro
+      - ./tsconfig.base.json:/app/tsconfig.base.json:ro
+      # Container-owned dependencies (anonymous volumes are seeded from the image).
+      - /app/node_modules
+      - /app/apps/backend/node_modules
+      - /app/apps/frontend/node_modules
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: dev
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001
+    image: localhost/project-sovereign-frontend:dev-container
+    container_name: project-sovereign-dev-frontend
+    environment:
+      # Same value as the build arg. It is inlined into the client bundle, so a
+      # change here needs a rebuild to take effect.
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Writable build cache inside the container, so the host stays clean.
+      NEXT_CACHE_DIR: /app/apps/frontend/.next
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./apps/frontend:/app/apps/frontend
+      - ./apps/backend/package.json:/app/apps/backend/package.json:ro
+      - ./tsconfig.base.json:/app/tsconfig.base.json:ro
+      - /app/node_modules
+      - /app/apps/frontend/node_modules
+      - /app/apps/backend/node_modules
+      # Keep .next and Next's own cache out of the host tree.
+      - frontend-next:/app/apps/frontend/.next
+    networks:
+      - internal
+
+volumes:
+  dev-pgdata:
+  frontend-next:
+
+networks:
+  internal:
+    driver: bridge

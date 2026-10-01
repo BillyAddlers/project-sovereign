@@ -1,0 +1,110 @@
+# Podman-compatible compose environment for local development and testing.
+#
+#   podman compose up --build          # start everything
+#   podman compose down                # stop (keeps DB data)
+#   podman compose down -v             # stop and drop the database volume
+#
+# Requires `podman-compose` or `docker-compose` on PATH, since `podman compose`
+# delegates to an external provider by default.
+#
+# Only one Postgres runs at a time on the host: the container from
+# `bun run db:up` (project-sovereign-postgres) also binds 127.0.0.1:5432. Stop it
+# first, or the port bind below will fail.
+#
+# The browser talks to the backend through the published host port, so
+# NEXT_PUBLIC_API_URL stays localhost-based even though the backend itself
+# reaches Postgres over the `internal` network as `db:5432`.
+
+name: project-sovereign
+
+services:
+  db:
+    image: docker.io/library/postgres:18-alpine
+    container_name: project-sovereign-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: project_sovereign
+      # Point PGDATA at a subdirectory so the named volume's lost+found-style
+      # entries never collide with the cluster.
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      # Host loopback only. Collaborators run `psql`/Prisma Studio on the host,
+      # but Postgres is never exposed to the network.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # The backend's migrate deploy runs on boot, so it must not start against a
+      # cluster that is still initialising.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    image: localhost/project-sovereign-backend:dev
+    container_name: project-sovereign-backend
+    restart: unless-stopped
+    environment:
+      # Container-network hostname, not localhost: the backend runs in its own
+      # container and resolves `db` over the internal network.
+      DATABASE_URL: postgresql://admin:password@db:5432/project_sovereign?schema=public
+      PORT: 3001
+      CORS_ORIGIN: http://localhost:3000
+      NODE_ENV: production
+      LOG_LEVEL: info
+      # Set to 1 to skip the migrate deploy on boot.
+      SKIP_MIGRATIONS: "0"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3001:3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r = await fetch('http://127.0.0.1:3001/api/health'); process.exit(r.ok ? 0 : 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        # Inlined into the client bundle at build time. Must stay host-reachable,
+        # since this value is used by the browser, not by the container.
+        NEXT_PUBLIC_API_URL: http://localhost:3001
+    image: localhost/project-sovereign-frontend:dev
+    container_name: project-sovereign-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - internal
+
+volumes:
+  pgdata:
+
+networks:
+  internal:
+    driver: bridge
