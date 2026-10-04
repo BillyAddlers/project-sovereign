@@ -6,14 +6,14 @@
 >   Brief dipakai sebagai spec belajar; item submission bersifat opsional.
 > Keputusan struktur: **monorepo dipertahankan secara sadar** (deviasi dari brief
 >   "two separate repos" — tidak relevan untuk latihan, tapi tetap dicatat).
-> Terakhir diperbarui: 2026-10-03
+> Terakhir diperbarui: 2026-10-05
 
 ## Status ringkas
 
 | Fase | Nama                            | Status        |
 |------|---------------------------------|---------------|
 | 0    | Fondasi monorepo                | ✅ Selesai    |
-| 1    | Domain model + Auth JWT         | ⬜ Berikutnya |
+| 1    | Domain model + Auth JWT         | 🔄 Berjalan |
 | 2    | Authorization core              | ⬜            |
 | 3    | Concurrency + audit trail       | ⬜            |
 | 4    | Frontend per-role (task board)  | ⬜            |
@@ -30,21 +30,24 @@
 
 ## Fase 1 — Domain model + Auth JWT
 ### Backend
-- [ ] Skema Prisma: `User` (role: PM/ENGINEER/CLIENT, department: UIUX/FRONTEND/BACKEND),
+- [x] Skema Prisma: `User` (role: PM/ENGINEER/CLIENT, department: UIUX/FRONTEND/BACKEND),
       `Project`, `TaskDependency`, `AuditLog`, `Attachment`
       (apps/backend/prisma/schema.prisma)
-- [ ] Extend `Task`: projectId, assigneeId, clientVisible, deletedAt, version
-- [ ] `bun run db:generate && bun run db:migrate` setelah skema berubah
-- [ ] Kontrak API baru di backend/src/lib/schemas.ts + mirror frontend
-      (atau promosi ke packages/shared — lihat "Catatan keputusan")
+- [x] Extend `Task`: projectId, assigneeId, clientVisible, deletedAt, version
+- [x] `bun run db:generate && bun run db:migrate` setelah skema berubah
+      (migration 20261004174035)
+- [x] Kontrak API baru di backend/src/lib/schemas.ts + mirror frontend
+      (packages/shared ditunda — duplikasi dipertahankan, lihat Catatan keputusan)
 - [ ] Auth JWT: register, login, logout (jsonwebtoken) + hash password
-- [ ] Middleware auth + guard di semua endpoint tasks (apps/backend/src/)
-- [ ] Seed: akun PM, Engineer (UIUX/Frontend/Backend), Client Guest + 1 project
-      contoh dengan rantai dependensi (apps/backend/prisma/seed.ts)
+      ← lib/auth.ts (hash Bun.password + sign/verify JWT) sudah ada;
+        routes /api/auth/* belum (Step 5)
+- [ ] Middleware auth + guard di semua endpoint tasks (apps/backend/src/) ← Step 6
+- [x] Seed: akun PM, Engineer (UIUX/Frontend/Backend), Client Guest + 1 project
+      contoh dengan rantai dependensi (apps/backend/prisma/seed.ts) — terverifikasi di DB
 ### Frontend
 - [ ] Halaman login (RHF+Zod), penyimpanan sesi, logout
 - [ ] Auth guard: protected routes di UI (redirect ke /login)
-- [ ] Baca node_modules/next/dist/docs/ SEBELUM menulis kode frontend (Next 16 breaking changes)
+- [x] Baca node_modules/next/dist/docs/ SEBELUM menulis kode frontend (Next 16 breaking changes)
 
 ## Fase 2 — Authorization core (RBAC + ABAC + state-based permissions)
 > Inti pembelajaran #1 — "permissions that change based on task status".
@@ -98,11 +101,17 @@
 - [ ] CI: GitHub Actions — format + lint + build
 
 ## Housekeeping
-- [ ] Commit apps/frontend/AGENTS.md + CLAUDE.md (auto-generated next dev; meng-commit
+- [x] Commit apps/frontend/AGENTS.md + CLAUDE.md (auto-generated next dev; meng-commit
       menjaga tree bersih)
-- [ ] Gitignore .serena/ (cache tooling agent)
+- [x] Nasib .serena/ — selesai via keputusan: folder di-commit mengikuti konvensi
+      Serena sendiri (nested .gitignore mengurus cache/ + project.local.yml)
 
 ## Catatan keputusan
+- **Port database dev** — host ini menjalankan `postgresql.service` di 5432, jadi
+  container dev dipindah ke **5433**: start dengan `POSTGRES_PORT=5433 bun run db:up`,
+  `DATABASE_URL` di apps/backend/.env menunjuk 5433. Catatan alur Prisma:
+  `migrate reset` hanya REPLAY file migration yang sudah ada — schema change =
+  `db:migrate` dulu (generate + apply), baru `db:seed`.
 - **Monorepo dipertahankan** — keputusan sadar untuk project latihan; brief aslinya
   meminta dua repo terpisah. Tidak ada konsekuensi submission.
 - **Tanpa deadline** — brief dipakai sebagai spec belajar. Fase 2 & 3 adalah inti
