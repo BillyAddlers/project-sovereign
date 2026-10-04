@@ -17,6 +17,10 @@ export const taskSchema = z.object({
   description: z.string().nullable(),
   status: taskStatusSchema,
   priority: taskPrioritySchema,
+  projectId: z.uuid(),
+  assigneeId: z.uuid().nullable(),
+  clientVisible: z.boolean(),
+  version: z.int().positive(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -41,9 +45,37 @@ export const createTaskSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
   description: z.string().trim().max(2000).optional(),
   priority: taskPrioritySchema.default("medium"),
+  projectId: z.uuid(),
+  assigneeId: z.uuid().optional(),
+  clientVisible: z.boolean().default(false),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+
+/**
+ * PATCH body — every field optional, plus `status`.
+ *
+ * Status lives only here: a new task always starts as `todo`, and PATCH is
+ * the single way to transition it. Who may make each transition is decided
+ * in Fase 2 (state-based permissions), not by the shape of this schema.
+ */
+export const updateTaskSchema = createTaskSchema.partial().extend({
+  status: taskStatusSchema.optional(),
+});
+
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+export const projectSchema = z.object({
+  id: z.uuid(),
+  name: z.string().min(1).max(200),
+  description: z.string().nullable(),
+  status: z.enum(["active", "archived"]),
+});
+
+export type Project = z.infer<typeof projectSchema>;
+
+export const projectListSchema = paginatedSchema(projectSchema);
+export type ProjectList = z.infer<typeof projectListSchema>;
 
 /** Query params for `GET /api/tasks` (kept in sync with `paginationSchema`). */
 export const taskQuerySchema = z.object({

@@ -7,7 +7,9 @@ import { z } from "zod";
  * process on boot rather than surface as a confusing 500 on the first request.
  */
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
   PORT: z.coerce.number().int().positive().default(3001),
   DATABASE_URL: z
     .string()
@@ -16,7 +18,10 @@ const envSchema = z.object({
       message: "DATABASE_URL must be a postgresql:// connection string",
     }),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error", "fatal", "silent"]).default("info"),
+  LOG_LEVEL: z
+    .enum(["debug", "info", "warn", "error", "fatal", "silent"])
+    .default("info"),
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
 });
 
 export type Env = z.infer<typeof envSchema>;

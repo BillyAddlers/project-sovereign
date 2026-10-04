@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -11,14 +11,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ApiError, post } from "@/lib/api";
-import { type CreateTaskInput, createTaskSchema, type Task } from "@/lib/schemas";
+import { ApiError, get, post } from "@/lib/api";
+import {
+  type CreateTaskInput,
+  createTaskSchema,
+  type ProjectList,
+  projectListSchema,
+  type Task,
+} from "@/lib/schemas";
 
 // Zod's `.default()` means the *input* type has optional fields while the
 // *output* type does not. React Hook Form needs the input type to register
 // fields, and the output type for the submitted value.
 type FormInput = z.input<typeof createTaskSchema>;
 type FormOutput = z.output<typeof createTaskSchema>;
+
+/** Fetch the projects the create form can attach a task to. */
+async function fetchProjects(): Promise<ProjectList> {
+  return projectListSchema.parse(await get<ProjectList>("/projects", { page: 1, rows: 100 }));
+}
 
 /**
  * React Hook Form bound to a Zod schema through `zodResolver`.
@@ -31,12 +42,15 @@ export function CreateTaskForm() {
   const queryClient = useQueryClient();
   const titleId = useId();
   const descriptionId = useId();
+  const projectIdId = useId();
   const priorityId = useId();
+
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
 
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(createTaskSchema),
     // `values` on the input keeps RHF in sync when the schema default changes.
-    defaultValues: { title: "", description: "", priority: "medium" },
+    defaultValues: { title: "", description: "", priority: "medium", projectId: "" },
     mode: "onBlur",
   });
 
@@ -69,6 +83,31 @@ export function CreateTaskForm() {
         {form.formState.errors.title ? (
           <p role="alert" className="text-destructive text-sm">
             {form.formState.errors.title.message}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={projectIdId}>Project</Label>
+        <select
+          id={projectIdId}
+          className="border-input h-8 w-full rounded-md border bg-transparent px-2 text-sm"
+          disabled={projectsQuery.isPending}
+          aria-invalid={Boolean(form.formState.errors.projectId)}
+          {...form.register("projectId")}
+        >
+          <option value="" disabled>
+            {projectsQuery.isPending ? "Loading projects…" : "Select a project"}
+          </option>
+          {projectsQuery.data?.data.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+        {form.formState.errors.projectId ? (
+          <p role="alert" className="text-destructive text-sm">
+            {form.formState.errors.projectId.message}
           </p>
         ) : null}
       </div>

@@ -7,6 +7,10 @@ export const taskSchema = z.object({
   description: z.string().nullable(),
   status: z.enum(["todo", "in_progress", "done"]),
   priority: z.enum(["low", "medium", "high"]),
+  projectId: z.uuid(),
+  assigneeId: z.uuid().nullable(),
+  clientVisible: z.boolean(),
+  version: z.int().positive(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -45,6 +49,29 @@ export const createTaskSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
   description: z.string().trim().max(2000).optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
+  projectId: z.uuid("Pilih project dulu"),
+  assigneeId: z.uuid().optional(),
+  clientVisible: z.boolean().default(false),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+
+/** Payload for `PATCH /api/tasks/:id` — mirrors the backend update schema. */
+export const updateTaskSchema = createTaskSchema.partial().extend({
+  status: z.enum(["todo", "in_progress", "done"]).optional(),
+});
+
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+/** A project as returned by `GET /api/projects`. */
+export const projectSchema = z.object({
+  id: z.uuid(),
+  name: z.string().min(1).max(200),
+  description: z.string().nullable(),
+  status: z.enum(["active", "archived"]),
+});
+
+export type Project = z.infer<typeof projectSchema>;
+
+export const projectListSchema = paginatedSchema(projectSchema);
+export type ProjectList = z.infer<typeof projectListSchema>;

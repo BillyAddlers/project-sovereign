@@ -8,6 +8,7 @@ import { z, ZodError } from "zod";
 import { AppError, type ErrorBody } from "@/lib/errors";
 import { env } from "@/lib/env";
 import { health } from "@/routes/health";
+import { projects } from "@/routes/projects";
 import { tasks } from "@/routes/tasks";
 
 /**
@@ -31,6 +32,7 @@ export function createApp() {
 
   app.route("/api/health", health);
   app.route("/api/tasks", tasks);
+  app.route("/api/projects", projects);
 
   app.notFound((c) => {
     const body: ErrorBody = {

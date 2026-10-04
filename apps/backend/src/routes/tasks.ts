@@ -1,19 +1,13 @@
 import { Hono } from "hono";
-import { z } from "zod";
 
 import { AppError } from "@/lib/errors";
 import { buildTaskQuery, paginate, paginationSchema } from "@/lib/paginate";
 import { prisma } from "@/lib/prisma";
+import { createTaskSchema, updateTaskSchema } from "@/lib/schemas";
 import { validated } from "@/lib/validate";
 import { buildTaskWhere } from "@/lib/validators";
 
 export const tasks = new Hono();
-
-const createTaskBody = z.object({
-  title: z.string().trim().min(1, "Title is required").max(200),
-  description: z.string().trim().max(2000).optional(),
-  priority: z.enum(["low", "medium", "high"]).default("medium"),
-});
 
 /** GET /api/tasks — paginated, filterable list powered by prisma-ezfilter. */
 tasks.get("/", validated("query", paginationSchema), async (c) => {
@@ -49,14 +43,14 @@ tasks.get("/:id", async (c) => {
 });
 
 /** POST /api/tasks — the same Zod schema the frontend form uses. */
-tasks.post("/", validated("json", createTaskBody), async (c) => {
+tasks.post("/", validated("json", createTaskSchema), async (c) => {
   const data = c.req.valid("json");
   const task = await prisma().task.create({ data });
   return c.json(task, 201);
 });
 
-/** PATCH /api/tasks/:id */
-tasks.patch("/:id", validated("json", createTaskBody.partial()), async (c) => {
+/** PATCH /api/tasks/:id — the only way a task's status changes. */
+tasks.patch("/:id", validated("json", updateTaskSchema), async (c) => {
   const id = c.req.param("id");
   const data = c.req.valid("json");
 

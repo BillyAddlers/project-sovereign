@@ -26,16 +26,152 @@ enum TaskPriority {
   high
 }
 
+enum UserRole{
+  pm
+  engineer
+  client
+}
+
+enum Department{
+  uiux
+  frontend
+  backend
+}
+
+enum ProjectStatus{
+  active
+  archived
+}
+
+enum AuditAction{
+  create
+  update
+  delete
+}
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique
+  passwordHash String
+  name         String
+  role         UserRole
+  department   Department?
+  avatarUrl    String?     @db.Text
+  deletedAt    DateTime?
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  tasks          Task[]          @relation("TaskAssignee")
+  auditLogs      AuditLog[]
+  attachments    Attachment[]
+  projectMembers ProjectMember[]
+  ownedProjects  Project[]       @relation("ProjectClient")
+
+  @@index([role])
+  @@map("users")
+}
+
+model Project {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @db.VarChar(200)
+  description String?       @db.Text
+  status      ProjectStatus @default(active)
+  clientId    String?       @db.Uuid
+  deletedAt   DateTime?
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  client  User?           @relation("ProjectClient", fields: [clientId], references: [id])
+  tasks   Task[]
+  members ProjectMember[]
+
+  @@index([clientId])
+  @@map("projects")
+}
+
+model ProjectMember {
+  projectId String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@id([projectId, userId])
+  @@map("project_members")
+}
+
+model TaskDependency {
+  taskId      String   @db.Uuid
+  dependsOnId String   @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  task      Task @relation("Dependent", fields: [taskId], references: [id])
+  dependsOn Task @relation("Prerequisite", fields: [dependsOnId], references: [id])
+
+  @@id([taskId, dependsOnId])
+  @@map("task_dependencies")
+}
+
+model AuditLog {
+  id            String      @id @default(uuid()) @db.Uuid
+  taskId        String      @db.Uuid
+  userId        String      @db.Uuid
+  action        AuditAction
+  changedColumn String      @db.VarChar(100)
+  oldValue      String?     @db.Text
+  newValue      String?     @db.Text
+  timestamp     DateTime    @default(now()) @map("timestamp")
+
+  task Task @relation(fields: [taskId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+model Attachment {
+  id           String   @id @default(uuid()) @db.Uuid
+  taskId       String   @db.Uuid
+  uploadedById String   @db.Uuid
+  filename     String   @db.VarChar(255)
+  url          String   @db.Text
+  mimeType     String   @db.VarChar(100)
+  size         Int
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  task       Task @relation(fields: [taskId], references: [id])
+  uploadedBy User @relation(fields: [uploadedById], references: [id])
+
+  @@index([taskId])
+  @@map("attachments")
+}
+
 model Task {
-  id          String       @id @default(uuid()) @db.Uuid
-  title       String       @db.VarChar(200)
-  description String?      @db.Text
-  status      TaskStatus   @default(todo)
-  priority    TaskPriority @default(medium)
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  id             String       @id @default(uuid()) @db.Uuid
+  title          String       @db.VarChar(200)
+  description    String?      @db.Text
+  status         TaskStatus   @default(todo)
+  priority       TaskPriority @default(medium)
+  projectId      String       @db.Uuid
+  assigneeId     String?      @db.Uuid
+  clientVisible  Boolean      @default(false)
+  deletedAt      DateTime?
+  version        Int          @default(1)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  auditlogs      AuditLog[]
+  attachments    Attachment[]
+
+  project     Project           @relation(fields: [projectId], references: [id])
+  assignee    User?             @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  dependencies TaskDependency[] @relation("Dependent")
+  dependents   TaskDependency[] @relation("Prerequisite")
 
   @@index([status])
   @@index([createdAt])
+  @@index([projectId])
+  @@index([assigneeId])
   @@map("tasks")
 }
