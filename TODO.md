@@ -1,7 +1,7 @@
 # TODO — Project Sovereign
 
 > Sumber kebenaran: **Fullstack Engineer Assessment Brief** (NodeWave) —
-> "Dokumen tanpa judul.docx" di ~/Downloads.
+> `docs/assessment-brief.docx`.
 > Konteks: **project latihan & eksplorasi** — tidak ada deadline, tidak ada submission.
 >   Brief dipakai sebagai spec belajar; item submission bersifat opsional.
 > Keputusan struktur: **monorepo dipertahankan secara sadar** (deviasi dari brief
