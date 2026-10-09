@@ -49,7 +49,7 @@ export const createTaskSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
   description: z.string().trim().max(2000).optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
-  projectId: z.uuid("Pilih project dulu"),
+  projectId: z.uuid("Choose a project for this task"),
   assigneeId: z.uuid().optional(),
   clientVisible: z.boolean().default(false),
 });
