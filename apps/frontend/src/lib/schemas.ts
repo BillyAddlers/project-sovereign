@@ -75,3 +75,44 @@ export type Project = z.infer<typeof projectSchema>;
 
 export const projectListSchema = paginatedSchema(projectSchema);
 export type ProjectList = z.infer<typeof projectListSchema>;
+
+/**
+ * Auth contract — mirrors `apps/backend/src/lib/schemas.ts`. Keep the two in
+ * sync or the client will accept payloads the server rejects (or vice versa).
+ */
+export const userRoleSchema = z.enum(["pm", "engineer", "client"]);
+export const departmentSchema = z.enum(["uiux", "frontend", "backend"]);
+
+export const registerSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(120),
+    email: z.email().toLowerCase(),
+    password: z.string().min(8, "Password must be at least 8 characters").max(200),
+    role: userRoleSchema.default("engineer"),
+    department: departmentSchema.optional(),
+  })
+  .refine((value) => value.role !== "engineer" || value.department, {
+    message: "Department is required for engineers",
+    path: ["department"],
+  });
+
+export type RegisterInput = z.infer<typeof registerSchema>;
+
+export const loginSchema = z.object({
+  email: z.email().toLowerCase(),
+  password: z.string().min(1, "Password is required"),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;
+
+/** The user shape the backend returns — never includes `passwordHash`. */
+export const publicUserSchema = z.object({
+  id: z.uuid(),
+  email: z.email(),
+  name: z.string(),
+  role: userRoleSchema,
+  department: departmentSchema.nullable(),
+  avatarUrl: z.string().nullable(),
+});
+
+export type PublicUser = z.infer<typeof publicUserSchema>;
