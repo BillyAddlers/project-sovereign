@@ -81,13 +81,13 @@ services:
       dockerfile: apps/frontend/Dockerfile
       target: dev
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:3001
+        NEXT_PUBLIC_BE_URL: http://localhost:3001
     image: localhost/project-sovereign-frontend:dev-container
     container_name: project-sovereign-dev-frontend
     environment:
       # Same value as the build arg. It is inlined into the client bundle, so a
       # change here needs a rebuild to take effect.
-      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_BE_URL: http://localhost:3001
       NEXT_TELEMETRY_DISABLED: "1"
       # Writable build cache inside the container, so the host stays clean.
       NEXT_CACHE_DIR: /app/apps/frontend/.next

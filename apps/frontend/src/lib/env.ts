@@ -5,7 +5,7 @@
  * public by definition. Never put a secret in a `NEXT_PUBLIC_*` variable.
  */
 export const env = {
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
+  apiBaseUrl: process.env.NEXT_PUBLIC_BE_URL ?? "http://localhost:3001",
 } as const;
 
 export type Env = typeof env;

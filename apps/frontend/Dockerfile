@@ -33,8 +33,8 @@ COPY apps/backend/package.json ./apps/backend/
 
 # Public by definition: Next inlines NEXT_PUBLIC_* into the client bundle at build
 # time, so changing it requires a rebuild, not a restart.
-ARG NEXT_PUBLIC_API_URL=http://localhost:3001
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ARG NEXT_PUBLIC_BE_URL=http://localhost:3001
+ENV NEXT_PUBLIC_BE_URL=${NEXT_PUBLIC_BE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app/apps/frontend
@@ -87,8 +87,8 @@ COPY apps/backend/package.json ./apps/backend/
 
 # Inlined at build time; also set as an env var in compose.dev.yaml so a value
 # change does not require a rebuild.
-ARG NEXT_PUBLIC_API_URL=http://localhost:3001
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ARG NEXT_PUBLIC_BE_URL=http://localhost:3001
+ENV NEXT_PUBLIC_BE_URL=${NEXT_PUBLIC_BE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 
