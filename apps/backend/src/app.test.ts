@@ -24,28 +24,28 @@ describe("error envelope", () => {
     expect(body.error.code).toBe("NOT_FOUND");
   });
 
-  it("rejects a non-numeric page before touching the database", async () => {
+  it("rejects unauthenticated task access before validation", async () => {
     const res = await app.request("/api/tasks?page=abc");
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
 
     const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.code).toBe("UNAUTHORIZED");
   });
 
-  it("rejects an empty title on create", async () => {
+  it("rejects an unauthenticated create before parsing the body", async () => {
     const res = await app.request("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: "" }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
 
     const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.code).toBe("UNAUTHORIZED");
   });
 
-  it("rejects a rows value above the maximum page size", async () => {
-    const res = await app.request("/api/tasks?rows=5000");
-    expect(res.status).toBe(400);
+  it("rejects unauthenticated project access", async () => {
+    const res = await app.request("/api/projects");
+    expect(res.status).toBe(401);
   });
 });

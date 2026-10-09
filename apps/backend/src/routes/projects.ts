@@ -3,8 +3,13 @@ import { Hono } from "hono";
 import { paginate, paginationSchema } from "@/lib/paginate";
 import { prisma } from "@/lib/prisma";
 import { validated } from "@/lib/validate";
+import { requireAuth } from "@/middleware/auth";
+import type { AppEnv } from "@/types";
 
-export const projects = new Hono();
+export const projects = new Hono<AppEnv>();
+
+// Session required for every project route; role scoping arrives in Fase 2.
+projects.use("*", requireAuth);
 
 /** GET /api/projects — paginated list. Role-scoped filtering arrives in Fase 2;
  *  the deletedAt filter arrives with soft delete in Fase 3. */

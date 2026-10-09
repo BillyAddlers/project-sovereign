@@ -8,11 +8,16 @@ export interface ErrorBody {
 }
 
 export class AppError extends Error {
-  readonly status: 400 | 404 | 409 | 422 | 500;
+  readonly status: 400 | 401 | 403 | 404 | 409 | 422 | 500;
   readonly code: string;
   readonly details?: unknown;
 
-  constructor(status: AppError["status"], code: string, message: string, details?: unknown) {
+  constructor(
+    status: AppError["status"],
+    code: string,
+    message: string,
+    details?: unknown,
+  ) {
     super(message);
     this.name = "AppError";
     this.status = status;
@@ -24,11 +29,21 @@ export class AppError extends Error {
     return new AppError(400, "BAD_REQUEST", message, details);
   }
 
+  static unauthorized(message = "Authentication required"): AppError {
+    return new AppError(401, "UNAUTHORIZED", message);
+  }
+
+  static forbidden(message: string): AppError {
+    return new AppError(403, "FORBIDDEN", message);
+  }
+
   static notFound(message: string): AppError {
     return new AppError(404, "NOT_FOUND", message);
   }
 
   toBody(): ErrorBody {
-    return { error: { code: this.code, message: this.message, details: this.details } };
+    return {
+      error: { code: this.code, message: this.message, details: this.details },
+    };
   }
 }

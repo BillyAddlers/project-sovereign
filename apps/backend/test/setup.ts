@@ -5,3 +5,6 @@ process.env.NODE_ENV ??= "test";
 process.env.DATABASE_URL ??= "postgresql://test:test@localhost:5432/test";
 process.env.CORS_ORIGIN ??= "http://localhost:3000";
 process.env.LOG_LEVEL ??= "silent";
+// Must satisfy the env schema (min 32 chars) so the app can be constructed
+// without a real .env.
+process.env.JWT_SECRET ??= "test-secret-test-secret-test-secret";

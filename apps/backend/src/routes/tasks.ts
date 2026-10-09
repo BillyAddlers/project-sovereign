@@ -6,8 +6,14 @@ import { prisma } from "@/lib/prisma";
 import { createTaskSchema, updateTaskSchema } from "@/lib/schemas";
 import { validated } from "@/lib/validate";
 import { buildTaskWhere } from "@/lib/validators";
+import { requireAuth } from "@/middleware/auth";
+import type { AppEnv } from "@/types";
 
-export const tasks = new Hono();
+export const tasks = new Hono<AppEnv>();
+
+// Every task route requires a session. Authorization (who may touch which task)
+// is layered on top of this in Fase 2.
+tasks.use("*", requireAuth);
 
 /** GET /api/tasks — paginated, filterable list powered by prisma-ezfilter. */
 tasks.get("/", validated("query", paginationSchema), async (c) => {
