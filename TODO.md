@@ -14,14 +14,14 @@
 |------|---------------------------------|---------------|
 | 0    | Fondasi monorepo                | ✅ Selesai    |
 | 0b   | Langkah 0: keputusan & fix kecil | ✅ Selesai    |
-| 1    | Domain model + Auth JWT         | 🔄 Berjalan |
+| 1    | Domain model + Auth JWT         | ✅ Selesai    |
 | 2    | Authorization core              | ⬜            |
 | 3    | Concurrency + audit trail       | ⬜            |
 | 4    | Frontend per-role (task board)  | ⬜            |
 | 5    | Deployment practice (opsional)  | ⬜            |
 | 6    | Backlog belajar                 | ⬜            |
 
-Urutan eksekusi: **0b → 1 (selesaikan) → 2 → 3 → 4 → 5/6**. Alasan: guard butuh
+Urutan eksekusi: **0b → 1 ✅ → 2 → 3 → 4 → 5/6**. Alasan: guard butuh
 identitas (1→2), service izin adalah sumber kebenaran kunci tombol UI (2→4),
 audit/locking backend-internal mendahului UI yang mendemokannya (3→4).
 Langkah 0 murah sekarang, jadi rework di tengah fase.
@@ -63,15 +63,21 @@ Langkah 0 murah sekarang, jadi rework di tengah fase.
       (migration 20261004174035)
 - [x] Kontrak API baru di backend/src/lib/schemas.ts + mirror frontend
       (packages/shared ditunda — duplikasi dipertahankan, lihat Catatan keputusan)
-- [ ] Auth JWT: register, login, logout (jsonwebtoken) + hash password
-      ← lib/auth.ts (hash Bun.password + sign/verify JWT) sudah ada;
-        routes /api/auth/* belum (Step 5)
-- [ ] Middleware auth + guard di semua endpoint tasks (apps/backend/src/) ← Step 6
+- [x] Auth JWT: register, login, logout (jsonwebtoken) + hash password
+      → lib/auth.ts: hash Bun.password + sign/verify JWT + cookie helper
+        (`setAuthCookie`/`clearAuthCookie`) + `toPublicUser`; routes
+        `/api/auth/register|login|logout|me` di routes/auth.ts
+- [x] Middleware auth + guard di semua endpoint tasks (apps/backend/src/)
+      → `requireAuth` (middleware/auth.ts) dipasang `use("*")` di routes tasks &
+        projects; endpoint balas 401 envelope; `/api/auth/me` memulihkan sesi
 - [x] Seed: akun PM, Engineer (UIUX/Frontend/Backend), Client Guest + 1 project
       contoh dengan rantai dependensi (apps/backend/prisma/seed.ts) — terverifikasi di DB
 ### Frontend
-- [ ] Halaman login (RHF+Zod), penyimpanan sesi, logout
-- [ ] Auth guard: protected routes di UI (redirect ke /login)
+- [x] Halaman login (RHF+Zod), penyimpanan sesi, logout
+      → app/login/page.tsx + hooks/use-session.ts + lib/auth-api.ts;
+        sesi = cookie httpOnly, header sign-out di app-header.tsx
+- [x] Auth guard: protected routes di UI (redirect ke /login)
+      → components/auth-guard.tsx membungkus app/page.tsx; 401 → replace /login
 - [x] Baca node_modules/next/dist/docs/ SEBELUM menulis kode frontend (Next 16 breaking changes)
 
 ## Fase 2 — Authorization core (RBAC + ABAC + state-based permissions)
@@ -167,3 +173,13 @@ Langkah 0 murah sekarang, jadi rework di tengah fase.
   skema tidak punya model Comment dan tidak ada fitur komentar. Diputuskan: keluarkan
   komentar dari lingkup masking Fase 2. Jika fitur komentar ditambahkan, masking Client
   WAJIB diperluas ke sana (jangan lupa update catatan ini).
+- **Desain sesi Fase 1** — transport: **cookie httpOnly `ps_token`** (SameSite=Lax,
+  secure hanya di production), bukan bearer token — `AUTH_COOKIE`, CORS
+  `credentials: true`, dan Axios `withCredentials` sudah disiapkan dari awal.
+  Register **terbuka** dengan field `role`/`department` (department wajib untuk
+  engineer). Guard Fase 1 = tasks + projects (autentikasi saja); otorisasi per-peran
+  menyusul di Fase 2. Guard UI **client-side** (tanpa `jose`/edge middleware) — cukup
+  untuk sekarang, layout per-peran server-side masuk Fase 4.
+  Catatan: logout hanya menghapus cookie; JWT stateless tetap valid sampai 7 hari
+  (revocation/denylist opsional nanti). Di deploy lintas-site (Fase 5) cookie butuh
+  SameSite=None; Secure + origin frontend di `CORS_ORIGIN`.
