@@ -15,7 +15,7 @@ export const AUTH_COOKIE = "ps_token";
 export interface AuthClaims {
   sub: string; // user id
   role: "pm" | "engineer" | "client";
-  deparment?: "uiux" | "frontend" | "backend";
+  department?: "uiux" | "frontend" | "backend";
 }
 
 export async function hashPassword(plain: string): Promise<string> {
