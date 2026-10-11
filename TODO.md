@@ -6,7 +6,7 @@
 >   Brief dipakai sebagai spec belajar; item submission bersifat opsional.
 > Keputusan struktur: **monorepo dipertahankan secara sadar** (deviasi dari brief
 >   "two separate repos" — tidak relevan untuk latihan, tapi tetap dicatat).
-> Terakhir diperbarui: 2026-10-09
+> Terakhir diperbarui: 2026-10-11
 
 ## Status ringkas
 
@@ -25,6 +25,23 @@ Urutan eksekusi: **0b → 1 ✅ → 2 → 3 → 4 → 5/6**. Alasan: guard butuh
 identitas (1→2), service izin adalah sumber kebenaran kunci tombol UI (2→4),
 audit/locking backend-internal mendahului UI yang mendemokannya (3→4).
 Langkah 0 murah sekarang, jadi rework di tengah fase.
+
+## Akun demo untuk testing
+Dibuat oleh `bun run db:seed` (idempoten — aman dijalankan ulang). Password **semua akun**:
+**`password123`**. Prasyarat: database jalan (mis. `podman-compose -f compose.dev.yaml up -d db`
+atau `bun run db:up`), lalu `bun run db:seed`.
+
+| Email                 | Role     | Department | Catatan                        |
+|-----------------------|----------|------------|--------------------------------|
+| `pm@demo.local`       | pm       | —          | akses penuh (project manager)  |
+| `qa@demo.local`       | engineer | qa         | engineer QA                    |
+| `frontend@demo.local` | engineer | frontend   | engineer frontend              |
+| `backend@demo.local`  | engineer | backend    | engineer backend               |
+| `client@demo.local`   | client   | —          | owner project contoh           |
+
+Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_department`
+(menggantikan akun `uiux@demo.local` yang lama). Login lewat UI di `/login`; API lewat
+`POST /api/auth/login`.
 
 ## Langkah 0 — Keputusan & fix kecil (sebelum fase berikutnya)
 - [x] Samakan nama env var → **rename kode ke `NEXT_PUBLIC_BE_URL`** (mengikuti brief).
@@ -55,7 +72,7 @@ Langkah 0 murah sekarang, jadi rework di tengah fase.
 
 ## Fase 1 — Domain model + Auth JWT
 ### Backend
-- [x] Skema Prisma: `User` (role: PM/ENGINEER/CLIENT, department: UIUX/FRONTEND/BACKEND),
+- [x] Skema Prisma: `User` (role: PM/ENGINEER/CLIENT, department: UIUX/FRONTEND/BACKEND/QA),
       `Project`, `TaskDependency`, `AuditLog`, `Attachment`
       (apps/backend/prisma/schema.prisma)
 - [x] Extend `Task`: projectId, assigneeId, clientVisible, deletedAt, version
@@ -70,7 +87,7 @@ Langkah 0 murah sekarang, jadi rework di tengah fase.
 - [x] Middleware auth + guard di semua endpoint tasks (apps/backend/src/)
       → `requireAuth` (middleware/auth.ts) dipasang `use("*")` di routes tasks &
         projects; endpoint balas 401 envelope; `/api/auth/me` memulihkan sesi
-- [x] Seed: akun PM, Engineer (UIUX/Frontend/Backend), Client Guest + 1 project
+- [x] Seed: akun PM, Engineer (QA/Frontend/Backend), Client Guest + 1 project
       contoh dengan rantai dependensi (apps/backend/prisma/seed.ts) — terverifikasi di DB
 ### Frontend
 - [x] Halaman login (RHF+Zod), penyimpanan sesi, logout
