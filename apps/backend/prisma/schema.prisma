@@ -36,6 +36,7 @@ enum Department{
   uiux
   frontend
   backend
+  qa
 }
 
 enum ProjectStatus{

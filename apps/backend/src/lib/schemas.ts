@@ -90,7 +90,7 @@ export const taskQuerySchema = z.object({
 export type TaskQuery = z.infer<typeof taskQuerySchema>;
 
 export const userRoleSchema = z.enum(["pm", "engineer", "client"]);
-export const departmentSchema = z.enum(["uiux", "frontend", "backend"]);
+export const departmentSchema = z.enum(["uiux", "frontend", "backend", "qa"]);
 
 export const registerSchema = z
   .object({

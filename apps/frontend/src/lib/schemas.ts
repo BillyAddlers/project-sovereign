@@ -81,7 +81,7 @@ export type ProjectList = z.infer<typeof projectListSchema>;
  * sync or the client will accept payloads the server rejects (or vice versa).
  */
 export const userRoleSchema = z.enum(["pm", "engineer", "client"]);
-export const departmentSchema = z.enum(["uiux", "frontend", "backend"]);
+export const departmentSchema = z.enum(["uiux", "frontend", "backend", "qa"]);
 
 export const registerSchema = z
   .object({

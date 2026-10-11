@@ -22,7 +22,9 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: databaseUrl }),
+});
 
 const DEMO_PASSWORD = "password123";
 
@@ -40,26 +42,36 @@ function mustGet(map: Map<string, string>, key: string): string {
 const passwordHash = await hashPassword(DEMO_PASSWORD);
 
 const users = [
-  { email: "pm@demo.local", name: "Paul PM", role: "pm" as const, department: null },
   {
-    email: "uiux@demo.local",
-    name: "Uma UI/UX",
+    email: "pm@demo.local",
+    name: "Billy Project Manager",
+    role: "pm" as const,
+    department: null,
+  },
+  {
+    email: "qa@demo.local",
+    name: "Maulana Quality Assurance",
     role: "engineer" as const,
-    department: "uiux" as const,
+    department: "qa" as const,
   },
   {
     email: "frontend@demo.local",
-    name: "Freddy Frontend",
+    name: "Rassy Frontend",
     role: "engineer" as const,
     department: "frontend" as const,
   },
   {
     email: "backend@demo.local",
-    name: "Bella Backend",
+    name: "Dime Backend",
     role: "engineer" as const,
     department: "backend" as const,
   },
-  { email: "client@demo.local", name: "Cindy Client", role: "client" as const, department: null },
+  {
+    email: "client@demo.local",
+    name: "Fadhil Client",
+    role: "client" as const,
+    department: null,
+  },
 ];
 
 const userByEmail = new Map<string, string>();
@@ -68,7 +80,12 @@ for (const user of users) {
   const row = await prisma.user.upsert({
     where: { email: user.email },
     create: { ...user, passwordHash },
-    update: { name: user.name, role: user.role, department: user.department, passwordHash },
+    update: {
+      name: user.name,
+      role: user.role,
+      department: user.department,
+      passwordHash,
+    },
   });
   userByEmail.set(user.email, row.id);
 }
@@ -82,7 +99,10 @@ let project = await prisma.project.findFirst({ where: { name: PROJECT_NAME } });
 if (project) {
   project = await prisma.project.update({
     where: { id: project.id },
-    data: { description: PROJECT_DESCRIPTION, clientId: mustGet(userByEmail, "client@demo.local") },
+    data: {
+      description: PROJECT_DESCRIPTION,
+      clientId: mustGet(userByEmail, "client@demo.local"),
+    },
   });
 } else {
   project = await prisma.project.create({
@@ -100,7 +120,7 @@ if (project) {
 // the clientId relation and never becomes a member.
 const memberEmails = [
   "pm@demo.local",
-  "uiux@demo.local",
+  "qa@demo.local",
   "frontend@demo.local",
   "backend@demo.local",
 ];
@@ -131,7 +151,7 @@ const taskSeeds: TaskSeed[] = [
     description: "Homepage and pricing page mockups in Figma.",
     priority: "high",
     status: "done",
-    assigneeEmail: "uiux@demo.local",
+    assigneeEmail: "qa@demo.local",
     clientVisible: true,
   },
   {
@@ -162,7 +182,9 @@ for (const seed of taskSeeds) {
     description: seed.description,
     priority: seed.priority,
     projectId: project.id,
-    assigneeId: seed.assigneeEmail ? mustGet(userByEmail, seed.assigneeEmail) : undefined,
+    assigneeId: seed.assigneeEmail
+      ? mustGet(userByEmail, seed.assigneeEmail)
+      : undefined,
     clientVisible: seed.clientVisible,
   });
 
@@ -172,9 +194,9 @@ for (const seed of taskSeeds) {
 
   const row = existing
     ? await prisma.task.update({
-        where: { id: existing.id },
-        data: { ...data, status: seed.status },
-      })
+      where: { id: existing.id },
+      data: { ...data, status: seed.status },
+    })
     : await prisma.task.create({ data: { ...data, status: seed.status } });
 
   taskIdsByTitle.set(seed.title, row.id);
@@ -202,8 +224,13 @@ for (const dependency of dependencySeeds) {
 
 // --- Report --------------------------------------------------------------------
 
-const [userCount, taskCount] = await Promise.all([prisma.user.count(), prisma.task.count()]);
-console.log(`Seeded. ${userCount} user(s), ${taskCount} task(s) in the database.`);
+const [userCount, taskCount] = await Promise.all([
+  prisma.user.count(),
+  prisma.task.count(),
+]);
+console.log(
+  `Seeded. ${userCount} user(s), ${taskCount} task(s) in the database.`,
+);
 console.log(`Demo accounts — password for all: ${DEMO_PASSWORD}`);
 for (const user of users) {
   const department = user.department ? `/${user.department}` : "";
