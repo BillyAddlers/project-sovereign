@@ -69,3 +69,21 @@ export async function post<TResponse, TBody = unknown>(
   const { data } = await http.post<TResponse>(url, body);
   return data;
 }
+
+export async function patch<TResponse, TBody = unknown>(
+  url: string,
+  body: TBody,
+): Promise<TResponse> {
+  const { data } = await http.patch<TResponse>(url, body);
+  return data;
+}
+
+export async function del(url: string): Promise<void> {
+  await http.delete(url);
+}
+
+/** Multipart upload; Axios lets the browser set the multipart boundary. */
+export async function upload<TResponse>(url: string, form: FormData): Promise<TResponse> {
+  const { data } = await http.post<TResponse>(url, form);
+  return data;
+}

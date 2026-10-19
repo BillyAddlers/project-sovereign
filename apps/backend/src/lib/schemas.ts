@@ -96,7 +96,7 @@ export const updateTaskSchema = z.object({
   description: z.string().trim().max(2000).optional(),
   priority: taskPrioritySchema.optional(),
   projectId: z.uuid().optional(),
-  assigneeId: z.uuid().optional(),
+  assigneeId: z.uuid().nullable().optional(),
   clientVisible: z.boolean().optional(),
   status: taskStatusSchema.optional(),
 });

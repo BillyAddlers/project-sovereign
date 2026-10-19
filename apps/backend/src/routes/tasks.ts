@@ -173,7 +173,7 @@ tasks.patch("/:id", validated("json", updateTaskSchema), async (c) => {
     if (!project) throw AppError.badRequest("Unknown project", { projectId: body.projectId });
   }
 
-  if (body.assigneeId !== undefined) {
+  if (body.assigneeId !== undefined && body.assigneeId !== null) {
     const assignee = await db.user.findFirst({
       where: { id: body.assigneeId, deletedAt: null },
       select: { role: true },

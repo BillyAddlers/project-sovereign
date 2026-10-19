@@ -12,6 +12,7 @@ import { auth } from "@/routes/auth";
 import { health } from "@/routes/health";
 import { projects } from "@/routes/projects";
 import { tasks } from "@/routes/tasks";
+import { users } from "@/routes/users";
 
 /**
  * Build the Hono application.
@@ -37,6 +38,7 @@ export function createApp() {
   app.route("/api/tasks", tasks);
   app.route("/api/projects", projects);
   app.route("/api/attachments", attachments);
+  app.route("/api/users", users);
 
   app.notFound((c) => {
     const body: ErrorBody = {

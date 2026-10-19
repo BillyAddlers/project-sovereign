@@ -17,7 +17,7 @@
 | 1    | Domain model + Auth JWT         | ✅ Selesai    |
 | 2    | Authorization core              | 🟡 BE selesai |
 | 3    | Concurrency + audit trail       | ⬜            |
-| 4    | Frontend per-role (task board)  | ⬜            |
+| 4    | Frontend per-role (task board)  | ✅ Selesai    |
 | 5    | Deployment practice (opsional)  | ⬜            |
 | 6    | Backlog belajar                 | ⬜            |
 
@@ -129,18 +129,21 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       DELETE menulis deletedAt, bukan hard delete
 - [ ] Race condition test: dua write bersamaan → satu berhasil, satu 409
 
-## Fase 4 — Frontend per-role (task board + views)
-- [ ] Layout aplikasi per-role (nav, guard, user menu)
-- [ ] Task board: visualisasi dependensi + state Blocked (dihitung otomatis dari
-      dependensi — state turunan, bukan enum; keputusan tercatat di Langkah 0)
-- [ ] View PM: edit task, define dependensi, toggle clientVisible
-- [ ] View Engineer: transisi status sesuai state-based rules + upload attachment
-- [ ] View Client: dashboard aggregate ("50% Complete") + hanya task clientVisible
-- [ ] Loading, empty, error state di setiap list/view
-- [ ] Responsive + palet NodeWave: primary #094C86/#0C77F8, accent #50B1D2,
-      surface #F6F9FC/#0F1B24, font Urbanist
-- [ ] Catat asumsi: kontrak pagination SharePoint internal tak bisa diverifikasi,
-      kontrak existing dipakai
+## Fase 4 — Frontend per-role (task board + views) ✅
+> Dikerjakan sebelum Fase 3 atas permintaan; locking/audit/soft delete masih terbuka.
+- [x] Layout aplikasi per-role — `components/app-shell.tsx` (nav Dashboard/Board, guard,
+      user menu) + route group `(app)`
+- [x] Task board: visualisasi dependensi + state Blocked (memakai `blocked` turunan backend)
+- [x] View PM: create/edit task, assign engineer, toggle clientVisible, define/remove
+      dependensi, delete
+- [x] View Engineer: transisi status (Start/Complete) sesuai state-based rules + upload attachment
+- [x] View Client: dashboard aggregate (`% complete`, counts) + hanya task clientVisible,
+      read-only
+- [x] Loading, empty, error state di setiap list/view
+- [x] Responsive + palet NodeWave (primary #094C86, accent #50B1D2, surface
+      #F6F9FC/#0F1B24, font Urbanist)
+- [x] Catat asumsi: kontrak pagination SharePoint internal tak bisa diverifikasi,
+      kontrak existing dipakai (lihat Catatan keputusan)
 
 ## Fase 5 — Deployment practice (opsional)
 > Brief mewajibkan deploy hanya untuk submission; tanpa submission (keputusan di
@@ -168,6 +171,13 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       Serena sendiri (nested .gitignore mengurus cache/ + project.local.yml)
 
 ## Catatan keputusan
+- **Fase 3 ditunda** — FE dikerjakan lebih dulu atas permintaan; optimistic locking,
+  audit trail, dan soft delete tetap terbuka.
+- **FE contract mirror disamakan** — task (`blocked`, `dependencies`, `attachments`),
+  stats, users, dan `updateTaskSchema` eksplisit tanpa default (bug Zod `.partial()`).
+- **UI lock client-side** — tombol Start/Complete/Edit/Attach digate memakai role +
+  `assigneeId` + `blocked` dari server; server tetap sumber kebenaran (403 tetap ada).
+- **`GET /api/users` (PM-only)** — direktori engineer untuk assignee picker.
 - **PM tidak boleh menyelesaikan task** — lebih ketat dari brief: PM dilarang set
   status `done` dari state mana pun; hanya assignee (executor) yang boleh.
 - **Engineer actions = assigned-only** — ubah status & upload attachment hanya pada

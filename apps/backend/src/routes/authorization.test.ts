@@ -331,6 +331,16 @@ describe.skipIf(!hasDatabase)("authorization", () => {
     expect(denied.status).toBe(403);
   });
 
+  it("lets the PM list engineers but not the engineers themselves", async () => {
+    const ok = await app.request("/api/users?rows=100", { headers: headersFor(f.pm) });
+    expect(ok.status).toBe(200);
+    const body = (await ok.json()) as { data: Array<{ role: string }> };
+    expect(body.data.every((row) => row.role === "engineer")).toBe(true);
+
+    const denied = await app.request("/api/users", { headers: headersFor(f.engineer) });
+    expect(denied.status).toBe(403);
+  });
+
   it("allows PM dependencies but rejects cycles", async () => {
     const created = await app.request(`/api/tasks/${f.tDepA.id}/dependencies`, {
       method: "POST",
