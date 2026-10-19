@@ -171,6 +171,8 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       Serena sendiri (nested .gitignore mengurus cache/ + project.local.yml)
 
 ## Catatan keputusan
+- **Login menampilkan akun demo** — halaman login punya panel akun (PM, QA, Frontend,
+  Backend, Client) dengan tombol "Use"; subtitle dashboard disesuaikan per role.
 - **Dependency saat create** — `createTaskSchema` menerima `dependencyIds` (maks 20,
   duplikat di-dedupe, wajib satu project, tanpa cek cycle karena task baru belum punya
   dependent). UI memakai `DependencyPicker` bersama (create + edit).

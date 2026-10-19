@@ -88,7 +88,9 @@ export function DashboardView() {
           <p className="text-muted-foreground text-sm">
             {user?.role === "client"
               ? "Aggregate metrics for your project — only client-visible work is included."
-              : "Project health at a glance."}
+              : user?.role === "engineer"
+                ? "Project health for the projects you work on."
+                : "Plan work and track project health at a glance."}
           </p>
         </div>
 
