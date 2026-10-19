@@ -7,6 +7,7 @@ import { z, ZodError } from "zod";
 
 import { AppError, type ErrorBody } from "@/lib/errors";
 import { env } from "@/lib/env";
+import { attachments } from "@/routes/attachments";
 import { auth } from "@/routes/auth";
 import { health } from "@/routes/health";
 import { projects } from "@/routes/projects";
@@ -35,6 +36,7 @@ export function createApp() {
   app.route("/api/auth", auth);
   app.route("/api/tasks", tasks);
   app.route("/api/projects", projects);
+  app.route("/api/attachments", attachments);
 
   app.notFound((c) => {
     const body: ErrorBody = {

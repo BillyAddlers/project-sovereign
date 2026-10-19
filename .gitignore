@@ -7,6 +7,9 @@ build/
 .output/
 .next/
 
+# Runtime uploads (Fase 2 attachments)
+uploads/
+
 # Environment
 .env
 .env.*

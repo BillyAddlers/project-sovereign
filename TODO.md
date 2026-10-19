@@ -6,7 +6,7 @@
 >   Brief dipakai sebagai spec belajar; item submission bersifat opsional.
 > Keputusan struktur: **monorepo dipertahankan secara sadar** (deviasi dari brief
 >   "two separate repos" — tidak relevan untuk latihan, tapi tetap dicatat).
-> Terakhir diperbarui: 2026-10-11
+> Terakhir diperbarui: 2026-10-19
 
 ## Status ringkas
 
@@ -15,7 +15,7 @@
 | 0    | Fondasi monorepo                | ✅ Selesai    |
 | 0b   | Langkah 0: keputusan & fix kecil | ✅ Selesai    |
 | 1    | Domain model + Auth JWT         | ✅ Selesai    |
-| 2    | Authorization core              | ⬜            |
+| 2    | Authorization core              | 🟡 BE selesai |
 | 3    | Concurrency + audit trail       | ⬜            |
 | 4    | Frontend per-role (task board)  | ⬜            |
 | 5    | Deployment practice (opsional)  | ⬜            |
@@ -97,23 +97,27 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       → components/auth-guard.tsx membungkus app/page.tsx; 401 → replace /login
 - [x] Baca node_modules/next/dist/docs/ SEBELUM menulis kode frontend (Next 16 breaking changes)
 
-## Fase 2 — Authorization core (RBAC + ABAC + state-based permissions)
+## Fase 2 — Authorization core (RBAC + ABAC + state-based permissions) 🟡
 > Inti pembelajaran #1 — "permissions that change based on task status".
-- [ ] Service izin terpusat — satu-satunya sumber keputusan izin
-- [ ] PM: read/write penuh, DILARANG transisi in_progress→done, boleh define dependensi
-- [ ] Engineer: hanya task project assigned; set in_progress hanya jika semua dependensi
+> Backend selesai + teruji (51 test, 0 fail). UI lock tombol sengaja ditunda ke
+> Fase 4 karena action UI di FE belum ada.
+- [x] Service izin terpusat — `src/lib/permissions.ts` (pure functions, unit-tested)
+- [x] PM: read/write penuh, DILARANG transisi ke `done` dari state mana pun
+      (keputusan eksplisit: hanya executor/assignee yang boleh menyelesaikan task),
+      boleh define dependensi
+- [x] Engineer: hanya task project assigned; set in_progress hanya jika semua dependensi
       Done; tidak boleh ubah title/description; hanya upload attachment + ubah status
-- [ ] Client: hanya aggregate metrics project sendiri (mis. "% complete") +
-      task clientVisible=true
-- [ ] Data masking level API: nama/avatar/departemen engineer di-strip dari response
-      Client (bukan disembunyikan via CSS). Komentar internal dikeluarkan dari lingkup
-      sekarang (tidak ada model Comment) — perluas masking bila fitur komentar ditambah
-- [ ] Endpoint upload attachment (multipart) — model `Attachment` ada di skema tapi
-      nol kode upload di backend; Engineer cuma bisa attachments + status, jadi ini
-      bagian inti Fase 2, bukan nice-to-have
-- [ ] Guard di setiap endpoint mutasi → 403 dengan envelope error standar
-- [ ] UI: tombol aksi terkunci sesuai izin (PM tanpa aksi "Done"; Engineer melihat
-      "In Progress" terkunci jika dependensi belum Done)
+- [x] Client: hanya aggregate metrics project sendiri (mis. "% complete") +
+      task clientVisible=true — `GET /api/projects/:id/stats`
+- [x] Data masking level API: `assignee`/`assigneeId`/attachments/title dependency
+      non-clientVisible di-strip dari response Client (bukan disembunyikan via CSS)
+- [x] Endpoint upload/download attachment (multipart, limit 10 MB, storage `uploads/`
+      + metadata DB) — PM atau engineer yang di-assign
+- [x] Guard di setiap endpoint mutasi → 403 envelope `FORBIDDEN`; read scoping per role
+      (`taskScope`/`projectScope`)
+- [x] Dependency endpoints (`POST/DELETE /api/tasks/:id/dependencies`) + cegah self/cycle
+- [x] `blocked` turunan di setiap response task (bukan enum), + daftar dependency
+- [ ] UI: tombol aksi terkunci sesuai izin → **dipindah ke Fase 4** (action UI belum ada)
 
 ## Fase 3 — Concurrency + audit trail + soft delete
 > Inti pembelajaran #2 — "prevention of data concurrency conflicts".
@@ -164,6 +168,17 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       Serena sendiri (nested .gitignore mengurus cache/ + project.local.yml)
 
 ## Catatan keputusan
+- **PM tidak boleh menyelesaikan task** — lebih ketat dari brief: PM dilarang set
+  status `done` dari state mana pun; hanya assignee (executor) yang boleh.
+- **Engineer actions = assigned-only** — ubah status & upload attachment hanya pada
+  task yang `assigneeId`-nya dirinya; task lain di project member tetap bisa dibaca.
+- **Attachment storage** — file di `apps/backend/uploads/` (gitignored) + metadata di
+  DB; `Attachment.url` menyimpan nama file server-side, API hanya mengekspos
+  `/api/attachments/:id/download`. Volume container dicatat untuk Fase 5.
+- **UI lock ditunda** — keputusan user: selesaikan backend dulu; tombol aksi terkunci
+  dikerjakan di Fase 4 saat action UI ada.
+- **Zod 4 `.partial()` retains `.default()`** — PATCH `{status}` sempat ikut membawa
+  `priority`/`clientVisible`; `updateTaskSchema` sekarang eksplisit tanpa default.
 - **Port database dev** — default repo adalah **5432** (`.env`, `.env.example`,
   `db-up.sh`, kedua compose file, README, AGENTS.md §11 semuanya 5432). Catatan lama
   "container dev dipindah ke 5433" ternyata **tidak cocok dengan kode**; host

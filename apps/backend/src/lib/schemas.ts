@@ -10,6 +10,24 @@ import { z } from "zod";
 
 export const taskStatusSchema = z.enum(["todo", "in_progress", "done"]);
 export const taskPrioritySchema = z.enum(["low", "medium", "high"]);
+export const userRoleSchema = z.enum(["pm", "engineer", "client"]);
+export const departmentSchema = z.enum(["uiux", "frontend", "backend", "qa"]);
+
+/** A prerequisite, as embedded in every task response. */
+export const taskDependencyRefSchema = z.object({
+  id: z.uuid(),
+  title: z.string(),
+  status: taskStatusSchema,
+});
+
+export const attachmentSchema = z.object({
+  id: z.uuid(),
+  filename: z.string(),
+  mimeType: z.string(),
+  size: z.int().nonnegative(),
+  createdAt: z.iso.datetime(),
+  downloadUrl: z.string(),
+});
 
 export const taskSchema = z.object({
   id: z.uuid(),
@@ -18,9 +36,23 @@ export const taskSchema = z.object({
   status: taskStatusSchema,
   priority: taskPrioritySchema,
   projectId: z.uuid(),
-  assigneeId: z.uuid().nullable(),
   clientVisible: z.boolean(),
   version: z.int().positive(),
+  /** Derived, never stored: at least one prerequisite is unfinished. */
+  blocked: z.boolean(),
+  dependencies: z.array(taskDependencyRefSchema),
+  // Present for PM/engineer; deliberately absent from the Client shape.
+  assigneeId: z.uuid().nullable().optional(),
+  assignee: z
+    .object({
+      id: z.uuid(),
+      name: z.string(),
+      department: departmentSchema.nullable(),
+      avatarUrl: z.string().nullable(),
+    })
+    .nullable()
+    .optional(),
+  attachments: z.array(attachmentSchema).optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -53,17 +85,30 @@ export const createTaskSchema = z.object({
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 
 /**
- * PATCH body — every field optional, plus `status`.
+ * PATCH body — every field explicit and optional, with NO defaults.
  *
- * Status lives only here: a new task always starts as `todo`, and PATCH is
- * the single way to transition it. Who may make each transition is decided
- * in Fase 2 (state-based permissions), not by the shape of this schema.
+ * `.partial()` on `createTaskSchema` would keep its `.default()` values, so a
+ * PATCH that only sends `status` would silently reset `priority` and
+ * `clientVisible`. Status lives only here: a new task starts as `todo`.
  */
-export const updateTaskSchema = createTaskSchema.partial().extend({
+export const updateTaskSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200).optional(),
+  description: z.string().trim().max(2000).optional(),
+  priority: taskPrioritySchema.optional(),
+  projectId: z.uuid().optional(),
+  assigneeId: z.uuid().optional(),
+  clientVisible: z.boolean().optional(),
   status: taskStatusSchema.optional(),
 });
 
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+/** Body for `POST /api/tasks/:id/dependencies`. */
+export const dependencyInputSchema = z.object({
+  dependsOnId: z.uuid(),
+});
+
+export type DependencyInput = z.infer<typeof dependencyInputSchema>;
 
 export const projectSchema = z.object({
   id: z.uuid(),
@@ -77,6 +122,20 @@ export type Project = z.infer<typeof projectSchema>;
 export const projectListSchema = paginatedSchema(projectSchema);
 export type ProjectList = z.infer<typeof projectListSchema>;
 
+/** Aggregate metrics for a project — the Client Guest's only read surface. */
+export const projectStatsSchema = z.object({
+  total: z.int().nonnegative(),
+  byStatus: z.object({
+    todo: z.int().nonnegative(),
+    in_progress: z.int().nonnegative(),
+    done: z.int().nonnegative(),
+  }),
+  percentComplete: z.int().min(0).max(100),
+  blockedCount: z.int().nonnegative(),
+});
+
+export type ProjectStats = z.infer<typeof projectStatsSchema>;
+
 /** Query params for `GET /api/tasks` (kept in sync with `paginationSchema`). */
 export const taskQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -85,12 +144,10 @@ export const taskQuerySchema = z.object({
   orderRule: z.enum(["asc", "desc"]).default("desc"),
   status: taskStatusSchema.optional(),
   search: z.string().optional(),
+  projectId: z.uuid().optional(),
 });
 
 export type TaskQuery = z.infer<typeof taskQuerySchema>;
-
-export const userRoleSchema = z.enum(["pm", "engineer", "client"]);
-export const departmentSchema = z.enum(["uiux", "frontend", "backend", "qa"]);
 
 export const registerSchema = z
   .object({

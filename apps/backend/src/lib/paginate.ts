@@ -11,6 +11,7 @@ export const paginationSchema = z.object({
   orderRule: z.enum(["asc", "desc"]).default("desc"),
   search: z.string().trim().min(1).optional(),
   status: z.enum(["todo", "in_progress", "done"]).optional(),
+  projectId: z.uuid().optional(),
 });
 
 export type PaginationInput = z.infer<typeof paginationSchema>;
