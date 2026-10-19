@@ -1,6 +1,8 @@
 import type { TaskPriority, TaskStatus } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 
+const badgeBase = "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium";
+
 const statusStyles: Record<TaskStatus, string> = {
   todo: "bg-muted text-muted-foreground",
   in_progress: "bg-primary/10 text-primary",
@@ -21,15 +23,7 @@ const priorityStyles: Record<TaskPriority, string> = {
 
 export function StatusBadge({ status, className }: { status: TaskStatus; className?: string }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-        statusStyles[status],
-        className,
-      )}
-    >
-      {statusLabels[status]}
-    </span>
+    <span className={cn(badgeBase, statusStyles[status], className)}>{statusLabels[status]}</span>
   );
 }
 
@@ -41,13 +35,7 @@ export function PriorityBadge({
   className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium capitalize",
-        priorityStyles[priority],
-        className,
-      )}
-    >
+    <span className={cn(badgeBase, "capitalize", priorityStyles[priority], className)}>
       {priority}
     </span>
   );
@@ -55,26 +43,12 @@ export function PriorityBadge({
 
 export function BlockedBadge({ className }: { className?: string }) {
   return (
-    <span
-      className={cn(
-        "bg-destructive/10 text-destructive inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-        className,
-      )}
-    >
-      Blocked
-    </span>
+    <span className={cn(badgeBase, "bg-destructive/10 text-destructive", className)}>Blocked</span>
   );
 }
 
 export function ClientVisibleBadge({ className }: { className?: string }) {
   return (
-    <span
-      className={cn(
-        "bg-accent/20 text-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-        className,
-      )}
-    >
-      Client-visible
-    </span>
+    <span className={cn(badgeBase, "bg-accent/20 text-foreground", className)}>Client-visible</span>
   );
 }

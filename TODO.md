@@ -171,6 +171,10 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       Serena sendiri (nested .gitignore mengurus cache/ + project.local.yml)
 
 ## Catatan keputusan
+- **UX board (revisi)** — engineer default filter **"My tasks"** (toggle "All project
+  tasks"); task blocked menampilkan **Start disabled + alasan dependency**; task milik
+  orang lain ditandai read-only; ukuran kartu/teks/padding dinaikkan; attachment
+  menerima gambar & dokumen (`accept`).
 - **Fase 3 ditunda** — FE dikerjakan lebih dulu atas permintaan; optimistic locking,
   audit trail, dan soft delete tetap terbuka.
 - **FE contract mirror disamakan** — task (`blocked`, `dependencies`, `attachments`),

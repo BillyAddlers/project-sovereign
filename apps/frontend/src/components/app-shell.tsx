@@ -46,7 +46,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                      "rounded-md px-3 py-1.5 text-[15px] font-medium transition-colors",
                       active
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-3">
             {user ? (
-              <div className="hidden text-right text-xs sm:block">
+              <div className="hidden text-right text-sm sm:block">
                 <div className="font-medium">{user.name}</div>
                 <div className="text-muted-foreground">
                   {roleLabel[user.role] ?? user.role}
@@ -86,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-10">{children}</main>
     </div>
   );
 }

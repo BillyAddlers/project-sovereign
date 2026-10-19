@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useSession } from "@/hooks/use-session";
 import { useEngineers, useProjects, useTasks } from "@/hooks/use-tasks";
 import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/ui-store";
 
 const columns = [
@@ -16,6 +17,13 @@ const columns = [
   { status: "in_progress", title: "In progress", description: "Being worked on now" },
   { status: "done", title: "Done", description: "Completed by the assignee" },
 ] as const;
+
+const scopes = [
+  { value: "mine", label: "My tasks" },
+  { value: "all", label: "All project tasks" },
+] as const;
+
+type Scope = (typeof scopes)[number]["value"];
 
 function errorMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : "Something went wrong.";
@@ -25,6 +33,7 @@ export function TaskBoard() {
   const { data: user } = useSession();
   const projectsQuery = useProjects();
   const [projectId, setProjectId] = useState("");
+  const [scopeOverride, setScopeOverride] = useState<Scope | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const search = useUiStore((state) => state.filters.search);
   const setSearch = useUiStore((state) => state.setSearch);
@@ -49,29 +58,40 @@ export function TaskBoard() {
   const engineersQuery = useEngineers(user?.role === "pm");
 
   const projects = projectsQuery.data?.data ?? [];
-  const tasks = tasksQuery.data?.data ?? [];
+  const allTasks = tasksQuery.data?.data ?? [];
   const engineers = engineersQuery.data?.data ?? [];
   const project = projects.find((entry) => entry.id === projectId);
   const error = projectsQuery.error ?? tasksQuery.error;
+
+  // Workers start on their own queue; the full project view stays one click away.
+  const scope: Scope = scopeOverride ?? (user?.role === "engineer" ? "mine" : "all");
+
+  const visibleTasks = useMemo(() => {
+    const rows = tasksQuery.data?.data ?? [];
+    if (scope !== "mine" || !user) return rows;
+    return rows.filter((task) => task.assigneeId === user.id);
+  }, [scope, tasksQuery.data, user]);
 
   const grouped = useMemo(
     () =>
       columns.map((column) => ({
         ...column,
-        tasks: tasks.filter((task) => task.status === column.status),
+        tasks: visibleTasks.filter((task) => task.status === column.status),
       })),
-    [tasks],
+    [visibleTasks],
   );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Task board</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Task board</h1>
           <p className="text-muted-foreground text-sm">
             {user?.role === "client"
               ? "Read-only: only client-visible tasks from your project."
-              : "Dependency-aware board — blocked tasks cannot be started."}
+              : user?.role === "engineer"
+                ? "Your assigned work first — switch to all project tasks to see the rest."
+                : "Dependency-aware board — blocked tasks cannot be started."}
           </p>
         </div>
 
@@ -95,6 +115,26 @@ export function TaskBoard() {
             <span className="text-muted-foreground text-sm">{project.name}</span>
           ) : null}
 
+          {user?.role === "engineer" ? (
+            <div className="bg-muted flex rounded-lg p-1">
+              {scopes.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setScopeOverride(option.value)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    scope === option.value
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <input
             className="border-input bg-background h-9 w-44 rounded-md border px-3 text-sm"
             placeholder="Search tasks…"
@@ -103,7 +143,7 @@ export function TaskBoard() {
           />
 
           {user?.role === "pm" ? (
-            <Button size="sm" onClick={() => setShowCreate((value) => !value)}>
+            <Button onClick={() => setShowCreate((value) => !value)}>
               {showCreate ? "Close" : "New task"}
             </Button>
           ) : null}
@@ -120,7 +160,7 @@ export function TaskBoard() {
       ) : null}
       {!projectsQuery.isPending && projects.length === 0 ? (
         <Card>
-          <CardContent className="text-muted-foreground py-10 text-center text-sm">
+          <CardContent className="text-muted-foreground py-12 text-center text-sm">
             No projects available.
           </CardContent>
         </Card>
@@ -129,7 +169,7 @@ export function TaskBoard() {
       {showCreate && user?.role === "pm" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Create a task</CardTitle>
+            <CardTitle className="text-lg">Create a task</CardTitle>
             <CardDescription>Only a PM plans work and assigns an executor.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -138,39 +178,39 @@ export function TaskBoard() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         {grouped.map((column) => (
-          <section key={column.status} className="space-y-3">
+          <section key={column.status} className="space-y-4">
             <div className="flex items-baseline justify-between gap-2">
               <div>
-                <h2 className="text-sm font-semibold">{column.title}</h2>
-                <p className="text-muted-foreground text-xs">{column.description}</p>
+                <h2 className="text-base font-semibold">{column.title}</h2>
+                <p className="text-muted-foreground text-sm">{column.description}</p>
               </div>
-              <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium tabular-nums">
+              <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-sm font-medium tabular-nums">
                 {column.tasks.length}
               </span>
             </div>
 
             {tasksQuery.isPending && projectId ? (
-              <p className="text-muted-foreground text-xs">Loading…</p>
+              <p className="text-muted-foreground text-sm">Loading…</p>
             ) : null}
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {column.tasks.map((task) => (
                 <TaskCard
                   key={task.id}
                   task={task}
                   role={user?.role ?? "client"}
                   userId={user?.id ?? ""}
-                  allTasks={tasks}
+                  allTasks={allTasks}
                   engineers={engineers}
                 />
               ))}
             </div>
 
             {!tasksQuery.isPending && column.tasks.length === 0 ? (
-              <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-xs">
-                No tasks
+              <div className="text-muted-foreground rounded-xl border border-dashed p-10 text-center text-sm">
+                {scope === "mine" ? "No tasks assigned to you" : "No tasks"}
               </div>
             ) : null}
           </section>

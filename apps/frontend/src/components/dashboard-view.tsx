@@ -26,10 +26,10 @@ function StatCard({
     <Card>
       <CardHeader className="pb-2">
         <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-3xl tabular-nums">{value}</CardTitle>
+        <CardTitle className="text-4xl tabular-nums">{value}</CardTitle>
       </CardHeader>
       {hint ? (
-        <CardContent className="text-muted-foreground pt-0 text-xs">{hint}</CardContent>
+        <CardContent className="text-muted-foreground pt-0 text-sm">{hint}</CardContent>
       ) : null}
     </Card>
   );
@@ -84,7 +84,7 @@ export function DashboardView() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground text-sm">
             {user?.role === "client"
               ? "Aggregate metrics for your project — only client-visible work is included."
@@ -154,11 +154,11 @@ export function DashboardView() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Progress</CardTitle>
+              <CardTitle className="text-lg">Progress</CardTitle>
               <CardDescription>Done versus total tasks in this project.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
+              <div className="bg-muted h-3 w-full overflow-hidden rounded-full">
                 <div
                   className="bg-primary h-full rounded-full transition-[width]"
                   style={{ width: `${stats.percentComplete}%` }}
@@ -168,10 +168,12 @@ export function DashboardView() {
                 {(["todo", "in_progress", "done"] as const).map((status) => (
                   <div
                     key={status}
-                    className="bg-muted/50 flex items-center justify-between rounded-md px-3 py-2 text-sm"
+                    className="bg-muted/50 flex items-center justify-between rounded-md px-3 py-3 text-sm"
                   >
                     <StatusBadge status={status} />
-                    <span className="font-medium tabular-nums">{stats.byStatus[status]}</span>
+                    <span className="text-base font-medium tabular-nums">
+                      {stats.byStatus[status]}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -182,7 +184,7 @@ export function DashboardView() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tasks at a glance</CardTitle>
+          <CardTitle className="text-lg">Tasks at a glance</CardTitle>
           <CardDescription>
             {user?.role === "client"
               ? "Only tasks marked client-visible."
@@ -205,14 +207,14 @@ export function DashboardView() {
             {glance.map((task) => (
               <li
                 key={task.id}
-                className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm"
+                className="border-border flex flex-wrap items-center gap-2 rounded-md border p-4 text-base"
               >
                 <span className="font-medium">{task.title}</span>
                 <StatusBadge status={task.status} />
                 <PriorityBadge priority={task.priority} />
                 {task.blocked ? <BlockedBadge /> : null}
                 {task.assignee ? (
-                  <span className="text-muted-foreground ml-auto text-xs">
+                  <span className="text-muted-foreground ml-auto text-sm">
                     {task.assignee.name}
                   </span>
                 ) : null}
