@@ -89,6 +89,7 @@ export const createTaskSchema = z.object({
   projectId: z.uuid("Choose a project for this task"),
   assigneeId: z.uuid().optional(),
   clientVisible: z.boolean().default(false),
+  dependencyIds: z.array(z.uuid()).max(20).optional(),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;

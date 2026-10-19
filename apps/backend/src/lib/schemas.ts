@@ -80,6 +80,8 @@ export const createTaskSchema = z.object({
   projectId: z.uuid(),
   assigneeId: z.uuid().optional(),
   clientVisible: z.boolean().default(false),
+  /** Prerequisites chosen at creation time; the task starts blocked until done. */
+  dependencyIds: z.array(z.uuid()).max(20).optional(),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { DependencyPicker } from "@/components/dependency-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,13 +34,9 @@ export function TaskEditPanel({ task, engineers, allTasks, onClose }: TaskEditPa
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
   const [assigneeId, setAssigneeId] = useState(task.assigneeId ?? "");
   const [clientVisible, setClientVisible] = useState(task.clientVisible);
-  const [dependsOnId, setDependsOnId] = useState("");
 
-  const candidates = allTasks.filter(
-    (candidate) =>
-      candidate.projectId === task.projectId &&
-      candidate.id !== task.id &&
-      !task.dependencies.some((dependency) => dependency.id === candidate.id),
+  const dependencyCandidates = allTasks.filter(
+    (candidate) => candidate.projectId === task.projectId && candidate.id !== task.id,
   );
 
   const save = () => {
@@ -60,20 +57,6 @@ export function TaskEditPanel({ task, engineers, allTasks, onClose }: TaskEditPa
         onSuccess: () => {
           toast.success("Task updated");
           onClose();
-        },
-        onError: (error) => toast.error(message(error)),
-      },
-    );
-  };
-
-  const add = () => {
-    if (!dependsOnId) return;
-    addDependency.mutate(
-      { taskId: task.id, dependsOnId },
-      {
-        onSuccess: () => {
-          toast.success("Dependency added");
-          setDependsOnId("");
         },
         onError: (error) => toast.error(message(error)),
       },
@@ -143,65 +126,30 @@ export function TaskEditPanel({ task, engineers, allTasks, onClose }: TaskEditPa
         Client-visible
       </label>
 
-      <div className="space-y-2">
-        <Label>Dependencies</Label>
-        {task.dependencies.length === 0 ? (
-          <p className="text-muted-foreground text-xs">No prerequisites.</p>
-        ) : (
-          <ul className="space-y-1">
-            {task.dependencies.map((dependency) => (
-              <li
-                key={dependency.id}
-                className="bg-background flex items-center justify-between gap-2 rounded px-2 py-1 text-sm"
-              >
-                <span>
-                  {dependency.title}{" "}
-                  <span className="text-muted-foreground text-xs">({dependency.status})</span>
-                </span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={removeDependency.isPending}
-                  onClick={() =>
-                    removeDependency.mutate(
-                      { taskId: task.id, dependsOnId: dependency.id },
-                      {
-                        onSuccess: () => toast.success("Dependency removed"),
-                        onError: (error) => toast.error(message(error)),
-                      },
-                    )
-                  }
-                >
-                  Remove
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <select
-            className="border-input bg-background h-9 min-w-0 flex-1 rounded-md border px-2 text-sm"
-            value={dependsOnId}
-            onChange={(event) => setDependsOnId(event.target.value)}
-          >
-            <option value="">Add prerequisite…</option>
-            {candidates.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.title}
-              </option>
-            ))}
-          </select>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!dependsOnId || addDependency.isPending}
-            onClick={add}
-          >
-            Add
-          </Button>
-        </div>
-      </div>
+      <DependencyPicker
+        candidates={dependencyCandidates}
+        selected={task.dependencies}
+        onAdd={(dependsOnId) =>
+          addDependency.mutate(
+            { taskId: task.id, dependsOnId },
+            {
+              onSuccess: () => toast.success("Dependency added"),
+              onError: (error) => toast.error(message(error)),
+            },
+          )
+        }
+        onRemove={(dependsOnId) =>
+          removeDependency.mutate(
+            { taskId: task.id, dependsOnId },
+            {
+              onSuccess: () => toast.success("Dependency removed"),
+              onError: (error) => toast.error(message(error)),
+            },
+          )
+        }
+        disabled={addDependency.isPending || removeDependency.isPending}
+        hint="This task cannot start until these are done."
+      />
 
       <div className="flex gap-2">
         <Button size="sm" disabled={update.isPending} onClick={save}>

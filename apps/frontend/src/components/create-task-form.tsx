@@ -6,13 +6,14 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { DependencyPicker } from "@/components/dependency-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreateTask, useEngineers, useProjects } from "@/hooks/use-tasks";
+import { useCreateTask, useEngineers, useProjects, useTasks } from "@/hooks/use-tasks";
 import { ApiError } from "@/lib/api";
-import { type CreateTaskInput, createTaskSchema } from "@/lib/schemas";
+import { type CreateTaskInput, createTaskSchema, type Task } from "@/lib/schemas";
 
 type FormInput = z.input<typeof createTaskSchema>;
 type FormOutput = z.output<typeof createTaskSchema>;
@@ -43,9 +44,27 @@ export function CreateTaskForm({
       priority: "medium",
       projectId: defaultProjectId ?? "",
       clientVisible: false,
+      dependencyIds: [],
     },
     mode: "onBlur",
   });
+
+  const projectId = form.watch("projectId");
+  const projectTasksQuery = useTasks(
+    {
+      page: 1,
+      rows: 100,
+      orderKey: "createdAt",
+      orderRule: "asc",
+      projectId: projectId || undefined,
+    },
+    Boolean(projectId),
+  );
+  const dependencyIds = form.watch("dependencyIds") ?? [];
+  const candidates = projectTasksQuery.data?.data ?? [];
+  const selectedDependencies = dependencyIds
+    .map((id) => candidates.find((task) => task.id === id))
+    .filter((task): task is Task => Boolean(task));
 
   const submit = (values: CreateTaskInput) => {
     createTask.mutate(values, {
@@ -85,7 +104,10 @@ export function CreateTaskForm({
             className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
             disabled={projectsQuery.isPending}
             aria-invalid={Boolean(form.formState.errors.projectId)}
-            {...form.register("projectId")}
+            {...form.register("projectId", {
+              // Prerequisites must live in the same project — drop the selection.
+              onChange: () => form.setValue("dependencyIds", []),
+            })}
           >
             <option value="" disabled>
               {projectsQuery.isPending ? "Loading projects…" : "Select a project"}
@@ -166,6 +188,23 @@ export function CreateTaskForm({
           </p>
         ) : null}
       </div>
+
+      <DependencyPicker
+        candidates={candidates}
+        selected={selectedDependencies}
+        onAdd={(id) =>
+          form.setValue("dependencyIds", [...dependencyIds, id], { shouldValidate: true })
+        }
+        onRemove={(id) =>
+          form.setValue(
+            "dependencyIds",
+            dependencyIds.filter((value) => value !== id),
+            { shouldValidate: true },
+          )
+        }
+        disabled={projectTasksQuery.isPending}
+        hint="The new task starts blocked until these are done."
+      />
 
       <Button type="submit" disabled={createTask.isPending}>
         {createTask.isPending ? "Creating…" : "Create task"}

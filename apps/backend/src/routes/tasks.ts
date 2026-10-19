@@ -107,16 +107,42 @@ tasks.post("/", validated("json", createTaskSchema), async (c) => {
     throw AppError.forbidden("Only a project manager can create tasks");
   }
 
-  const data = c.req.valid("json");
+  const input = c.req.valid("json");
   const db = prisma();
 
   const project = await db.project.findFirst({
-    where: { id: data.projectId, deletedAt: null },
+    where: { id: input.projectId, deletedAt: null },
     select: { id: true },
   });
-  if (!project) throw AppError.badRequest("Unknown project", { projectId: data.projectId });
+  if (!project) throw AppError.badRequest("Unknown project", { projectId: input.projectId });
 
-  const task = await db.task.create({ data, include: taskInclude });
+  // Duplicate ids are harmless input; keep one edge per prerequisite.
+  const { dependencyIds: rawDependencyIds, ...fields } = input;
+  const dependencyIds = [...new Set(rawDependencyIds ?? [])];
+
+  if (dependencyIds.length > 0) {
+    const prerequisites = await db.task.findMany({
+      where: { id: { in: dependencyIds }, deletedAt: null },
+      select: { id: true, projectId: true },
+    });
+    if (prerequisites.length !== dependencyIds.length) {
+      throw AppError.badRequest("Unknown prerequisite task", { dependencyIds });
+    }
+    if (prerequisites.some((entry) => entry.projectId !== input.projectId)) {
+      throw AppError.badRequest("Dependencies must be in the same project");
+    }
+  }
+
+  // A brand-new task has no dependents, so it cannot close a cycle — no check needed.
+  const task = await db.task.create({
+    data: {
+      ...fields,
+      ...(dependencyIds.length > 0
+        ? { dependencies: { create: dependencyIds.map((dependsOnId) => ({ dependsOnId })) } }
+        : {}),
+    },
+    include: taskInclude,
+  });
   return c.json(serializeTask(task, user), 201);
 });
 

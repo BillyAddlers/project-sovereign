@@ -421,4 +421,42 @@ describe.skipIf(!hasDatabase)("authorization", () => {
     const body = (await res.json()) as { data: Array<{ id: string }> };
     expect(body.data.map((row) => row.id)).toContain(f.tForeign.id);
   });
+
+  it("creates a task together with its prerequisites (deduplicated)", async () => {
+    const res = await app.request("/api/tasks", {
+      method: "POST",
+      headers: headersFor(f.pm),
+      body: JSON.stringify({
+        title: `Created with deps ${crypto.randomUUID()}`,
+        projectId: f.project.id,
+        priority: "low",
+        dependencyIds: [f.tDone.id, f.tReady.id, f.tReady.id],
+      }),
+    });
+    expect(res.status).toBe(201);
+
+    const body = (await res.json()) as {
+      dependencies: Array<{ id: string }>;
+      blocked: boolean;
+    };
+    expect(body.dependencies.map((dependency) => dependency.id).sort()).toEqual(
+      [f.tDone.id, f.tReady.id].sort(),
+    );
+    // tReady is still todo, so the new task starts blocked.
+    expect(body.blocked).toBe(true);
+  });
+
+  it("rejects a prerequisite from another project", async () => {
+    const res = await app.request("/api/tasks", {
+      method: "POST",
+      headers: headersFor(f.pm),
+      body: JSON.stringify({
+        title: `Bad dependency ${crypto.randomUUID()}`,
+        projectId: f.project.id,
+        priority: "low",
+        dependencyIds: [f.tForeign.id],
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
 });
