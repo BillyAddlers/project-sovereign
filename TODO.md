@@ -171,6 +171,9 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       Serena sendiri (nested .gitignore mengurus cache/ + project.local.yml)
 
 ## Catatan keputusan
+- **Dependency saat create** — `createTaskSchema` menerima `dependencyIds` (maks 20,
+  duplikat di-dedupe, wajib satu project, tanpa cek cycle karena task baru belum punya
+  dependent). UI memakai `DependencyPicker` bersama (create + edit).
 - **UX board (revisi)** — engineer default filter **"My tasks"** (toggle "All project
   tasks"); task blocked menampilkan **Start disabled + alasan dependency**; task milik
   orang lain ditandai read-only; ukuran kartu/teks/padding dinaikkan; attachment
