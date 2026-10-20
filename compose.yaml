@@ -12,8 +12,9 @@
 # first, or the port bind below will fail.
 #
 # The browser talks to the backend through the published host port, so
-# NEXT_PUBLIC_BE_URL stays localhost-based even though the backend itself
-# reaches Postgres over the `internal` network as `db:5432`.
+# NEXT_PUBLIC_BE_URL uses 127.0.0.1 (matching the published bind and the
+# browser's CORS origin) even though the backend itself reaches Postgres over
+# the `internal` network as `db:5432`.
 
 name: project-sovereign
 
@@ -58,7 +59,7 @@ services:
       # container and resolves `db` over the internal network.
       DATABASE_URL: postgresql://admin:password@db:5432/project_sovereign?schema=public
       PORT: 3001
-      CORS_ORIGIN: http://localhost:3000
+      CORS_ORIGIN: http://127.0.0.1:3000
       NODE_ENV: production
       LOG_LEVEL: info
       # Set to 1 to skip the migrate deploy on boot.
@@ -90,7 +91,7 @@ services:
       args:
         # Inlined into the client bundle at build time. Must stay host-reachable,
         # since this value is used by the browser, not by the container.
-        NEXT_PUBLIC_BE_URL: http://localhost:3001
+        NEXT_PUBLIC_BE_URL: http://127.0.0.1:3001
     image: localhost/project-sovereign-frontend:dev
     container_name: project-sovereign-frontend
     restart: unless-stopped

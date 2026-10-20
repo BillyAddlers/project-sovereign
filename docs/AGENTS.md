@@ -336,10 +336,11 @@ export PATH="$HOME/.local/bin:$PATH"
 - Migrations apply on backend boot via `scripts/docker-entrypoint.sh`, which
   waits on `pg_isready` first and honours `SKIP_MIGRATIONS=1`. It is idempotent —
   a restart logs "No pending migrations to apply".
-- `NEXT_PUBLIC_BE_URL` is `http://localhost:3001` (the **host**-published
-  port), because it is inlined into the client bundle for the browser. The
-  backend reaches the database as `db:5432` (the compose service name) — the two
-  are deliberately different hosts.
+- `NEXT_PUBLIC_BE_URL` is `http://127.0.0.1:3001` (the **host**-published
+  port), because it is inlined into the client bundle for the browser. It must
+  match the browser's page origin (`http://127.0.0.1:3000`) so the backend's
+  `CORS_ORIGIN` accepts it. The backend reaches the database as `db:5432` (the
+  compose service name) — the two are deliberately different hosts.
 
 ### What not to regress
 

@@ -3,7 +3,7 @@
 // still construct the app.
 process.env.NODE_ENV ??= "test";
 process.env.DATABASE_URL ??= "postgresql://test:test@localhost:5432/test";
-process.env.CORS_ORIGIN ??= "http://localhost:3000";
+process.env.CORS_ORIGIN ??= "http://127.0.0.1:3000";
 process.env.LOG_LEVEL ??= "silent";
 // Must satisfy the env schema (min 32 chars) so the app can be constructed
 // without a real .env.

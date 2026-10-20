@@ -55,7 +55,7 @@ services:
     environment:
       DATABASE_URL: postgresql://admin:password@db:5432/project_sovereign?schema=public
       PORT: 3001
-      CORS_ORIGIN: http://localhost:3000
+      CORS_ORIGIN: http://127.0.0.1:3000
       NODE_ENV: development
       LOG_LEVEL: debug
     depends_on:
@@ -81,13 +81,13 @@ services:
       dockerfile: apps/frontend/Dockerfile
       target: dev
       args:
-        NEXT_PUBLIC_BE_URL: http://localhost:3001
+        NEXT_PUBLIC_BE_URL: http://127.0.0.1:3001
     image: localhost/project-sovereign-frontend:dev-container
     container_name: project-sovereign-dev-frontend
     environment:
       # Same value as the build arg. It is inlined into the client bundle, so a
       # change here needs a rebuild to take effect.
-      NEXT_PUBLIC_BE_URL: http://localhost:3001
+      NEXT_PUBLIC_BE_URL: http://127.0.0.1:3001
       NEXT_TELEMETRY_DISABLED: "1"
       # Writable build cache inside the container, so the host stays clean.
       NEXT_CACHE_DIR: /app/apps/frontend/.next

@@ -43,7 +43,7 @@ export PATH="$HOME/.local/bin:$PATH"      # if podman-compose landed there
 podman-compose -f compose.dev.yaml up --build
 ```
 
-Then open <http://localhost:3000>. The database, API and UI all come up
+Then open <http://127.0.0.1:3000>. The database, API and UI all come up
 together, migrations are applied automatically, and edits to `apps/*` reload
 live — the frontend through `next dev`, the backend through `bun --watch`.
 
@@ -122,7 +122,7 @@ backend; do not report frontend tests as passing.
 
 ## API
 
-Base URL `http://localhost:3001/api`. Tasks are paginated, filterable and
+Base URL `http://127.0.0.1:3001/api`. Tasks are paginated, filterable and
 sortable.
 
 | Method   | Path         | Does                                                               |

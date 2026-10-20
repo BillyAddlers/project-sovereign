@@ -22,7 +22,7 @@ bun run clean      # remove .next
 Copy `.env.example` to `.env.local`:
 
 ```
-NEXT_PUBLIC_BE_URL=http://localhost:3001
+NEXT_PUBLIC_BE_URL=http://127.0.0.1:3001
 ```
 
 Any `NEXT_PUBLIC_*` value is inlined into the browser bundle at build time.
