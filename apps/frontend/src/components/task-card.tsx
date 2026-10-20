@@ -52,7 +52,7 @@ export function TaskCard({ task, role, userId, allTasks, engineers }: TaskCardPr
 
   const transition = (status: "in_progress" | "done") => {
     update.mutate(
-      { id: task.id, input: { status } },
+      { id: task.id, input: { status, expectedVersion: task.version } },
       {
         onSuccess: () => toast.success(status === "done" ? "Task completed" : "Task started"),
         onError: (error) => toast.error(message(error)),

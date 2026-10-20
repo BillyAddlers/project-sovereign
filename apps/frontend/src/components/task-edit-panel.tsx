@@ -46,6 +46,7 @@ export function TaskEditPanel({ task, engineers, allTasks, onClose }: TaskEditPa
       priority,
       assigneeId: assigneeId || null,
       clientVisible,
+      expectedVersion: task.version,
     });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Invalid input");

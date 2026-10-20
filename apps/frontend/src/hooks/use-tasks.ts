@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { ApiError } from "@/lib/api";
 import * as resources from "@/lib/resources";
 import type { CreateTaskInput, TaskQuery, UpdateTaskInput } from "@/lib/schemas";
 
@@ -65,6 +66,11 @@ export function useUpdateTask() {
     mutationFn: ({ id, input }: { id: string; input: UpdateTaskInput }) =>
       resources.updateTask(id, input),
     onSuccess: invalidate,
+    // A version conflict means our copy is stale — refetch so the UI heals
+    // itself rather than retrying a write that can never be accepted.
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) invalidate();
+    },
   });
 }
 
