@@ -16,7 +16,7 @@
 | 0b   | Langkah 0: keputusan & fix kecil | ✅ Selesai    |
 | 1    | Domain model + Auth JWT         | ✅ Selesai    |
 | 2    | Authorization core              | ✅ Selesai    |
-| 3    | Concurrency + audit trail       | ⬜            |
+| 3    | Concurrency + audit trail       | ✅ Selesai    |
 | 4    | Frontend per-role (task board)  | ✅ Selesai    |
 | 5    | Deployment practice (opsional)  | ⬜            |
 | 6    | Backlog belajar                 | ⬜            |
@@ -122,15 +122,19 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       soft (409 `PROJECT_NOT_EMPTY` bila masih ada task) + kelola member
       (`POST`/`DELETE /api/projects/:id/members[/:userId]`); response di-mask untuk Client
 
-## Fase 3 — Concurrency + audit trail + soft delete
+## Fase 3 — Concurrency + audit trail + soft delete ✅
 > Inti pembelajaran #2 — "prevention of data concurrency conflicts".
-- [ ] Optimistic locking: kolom `version`, PATCH menerima expectedVersion,
-      versi basi → 409 Conflict
-- [ ] AuditLog immutable: setiap perubahan field task mencatat userId, timestamp,
+> Selesai + teruji (80 test, 0 fail): `expectedVersion` wajib, audit append-only,
+> soft delete Task, dan uji race condition.
+- [x] Optimistic locking: kolom `version`, PATCH menerima `expectedVersion` (wajib),
+      versi basi → 409 `VERSION_CONFLICT` (satu conditional UPDATE, bukan read-then-write)
+- [x] AuditLog immutable: setiap perubahan field task mencatat userId, timestamp,
       changedColumn, oldValue, newValue — tanpa endpoint update/delete untuk tabel ini
-- [ ] Soft delete: deletedAt di Task/Project; semua query memfilter deletedAt: null;
-      DELETE menulis deletedAt, bukan hard delete
-- [ ] Race condition test: dua write bersamaan → satu berhasil, satu 409
+      (+ `GET /api/tasks/:id/audit`, PM-only)
+- [x] Soft delete: `deletedAt` di Task; `taskScope` memfilter `deletedAt: null`; DELETE
+      task menulis `deletedAt`, bukan hard delete; task terhapus tak lagi memblokir dependent
+- [x] Race condition test: dua write bersamaan → satu 200, satu 409
+      (`routes/concurrency.test.ts`)
 
 ## Fase 4 — Frontend per-role (task board + views) ✅
 > Dikerjakan sebelum Fase 3 atas permintaan; locking/audit/soft delete masih terbuka.
@@ -174,6 +178,25 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       Serena sendiri (nested .gitignore mengurus cache/ + project.local.yml)
 
 ## Catatan keputusan
+- **Optimistic locking = satu conditional UPDATE** — PATCH `/api/tasks/:id` wajib
+  mengirim `expectedVersion`; server menjalankan `updateMany` dengan
+  `where: { id, version: expectedVersion }` + `version: { increment: 1 }`. Dua penulis
+  bersamaan tidak bisa dua-duanya cocok → yang kalah 409 `VERSION_CONFLICT`
+  (details `expectedVersion` + `currentVersion`). Read-then-write tidak dipakai
+  karena punya celah TOCTOU. FE mengirim `task.version`; pada 409 query di-invalidate.
+- **Audit trail append-only** — baris ditulis di transaksi yang sama dengan mutasinya:
+  update → satu baris per kolom yang benar-benar berubah; create → satu baris per field
+  tersimpan (oldValue null); delete → satu baris `deletedAt`. Perubahan relasi
+  (dependency) TIDAK diaudit (bukan field). Tidak ada endpoint update/delete `AuditLog`.
+- **Soft delete Task** — DELETE menulis `deletedAt` + bump version; dependency &
+  attachment tetap tersimpan (file tidak dihapus). Ini juga menjaga audit trail tetap
+  valid: `AuditLog.taskId` FK ke Task, jadi hard delete akan menghancurkan jejak.
+  Prasyarat yang soft-deleted tidak lagi memblokir dependent (`taskInclude` + query
+  cycle memfilter `dependsOn.deletedAt: null`), konsisten dengan stats project.
+- **Scope locking: Task saja** — contoh concurrency di brief adalah Task; Project tidak
+  punya kolom `version`, jadi tidak perlu migration. Locking project bisa menyusul.
+- **Tanpa migration di Fase 3** — kolom `version`, `deletedAt`, dan model `AuditLog`
+  sudah ada sejak Fase 1; Fase 3 murni perubahan kode.
 - **Department bukan sumbu otorisasi** — `department` disimpan dan dipakai untuk
   display/picker, tetapi keputusan izin hanya memakai role + state + relasi task.
   Aturan brief "Frontend Engineer butuh task UI/UX Done" dimodelkan sebagai
@@ -196,8 +219,8 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
   tasks"); task blocked menampilkan **Start disabled + alasan dependency**; task milik
   orang lain ditandai read-only; ukuran kartu/teks/padding dinaikkan; attachment
   menerima gambar & dokumen (`accept`).
-- **Fase 3 ditunda** — FE dikerjakan lebih dulu atas permintaan; optimistic locking,
-  audit trail, dan soft delete tetap terbuka.
+- **Fase 3 sempat ditunda** — FE dikerjakan lebih dulu atas permintaan; optimistic
+  locking, audit trail, dan soft delete kini selesai.
 - **FE contract mirror disamakan** — task (`blocked`, `dependencies`, `attachments`),
   stats, users, dan `updateTaskSchema` eksplisit tanpa default (bug Zod `.partial()`).
 - **UI lock client-side** — tombol Start/Complete/Edit/Attach digate memakai role +

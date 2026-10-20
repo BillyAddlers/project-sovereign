@@ -123,7 +123,8 @@ backend; do not report frontend tests as passing.
 ## API
 
 Base URL `http://127.0.0.1:3001/api`. Tasks are paginated, filterable and
-sortable.
+sortable. Task updates are version-checked: send the `version` you last read as
+`expectedVersion`; a stale value is refused with `409 VERSION_CONFLICT`.
 
 | Method   | Path         | Does                                                               |
 | -------- | ------------ | ------------------------------------------------------------------ |
@@ -131,8 +132,9 @@ sortable.
 | `GET`    | `/tasks`     | List — `page`, `rows`, `status`, `search`, `orderKey`, `orderRule` |
 | `POST`   | `/tasks`     | Create (PM only)                                                   |
 | `GET`    | `/tasks/:id` | Fetch one                                                          |
-| `PATCH`  | `/tasks/:id` | Update — status changes are state-ruled                            |
-| `DELETE` | `/tasks/:id` | Delete (PM only)                                                   |
+| `PATCH`  | `/tasks/:id` | Update — needs `expectedVersion`; state-ruled; 409 on conflict    |
+| `DELETE` | `/tasks/:id` | Soft delete (PM only)                                              |
+| `GET`    | `/tasks/:id/audit` | Immutable change history (PM only)                          |
 | `GET`    | `/projects`  | List — paginated, role-scoped                                      |
 | `POST`   | `/projects`  | Create (PM only)                                                   |
 | `GET`    | `/projects/:id` | Fetch one — masked for clients                                  |
