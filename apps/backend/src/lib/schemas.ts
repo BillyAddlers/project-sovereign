@@ -101,9 +101,33 @@ export const updateTaskSchema = z.object({
   assigneeId: z.uuid().nullable().optional(),
   clientVisible: z.boolean().optional(),
   status: taskStatusSchema.optional(),
+  /**
+   * The `version` the client last read. The write is applied only while the row
+   * still carries it, so two concurrent writers cannot silently overwrite each
+   * other — the loser gets 409 `VERSION_CONFLICT`.
+   */
+  expectedVersion: z.int().positive(),
 });
 
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+/**
+ * One immutable audit entry. `changedColumn` is a task field name (or
+ * `deletedAt` on soft delete); values are stored as text because a task field
+ * can hold a string, enum, boolean, or null.
+ */
+export const auditLogSchema = z.object({
+  id: z.uuid(),
+  taskId: z.uuid(),
+  userId: z.uuid(),
+  action: z.enum(["create", "update", "delete"]),
+  changedColumn: z.string(),
+  oldValue: z.string().nullable(),
+  newValue: z.string().nullable(),
+  timestamp: z.iso.datetime(),
+});
+
+export type AuditLog = z.infer<typeof auditLogSchema>;
 
 /** Body for `POST /api/tasks/:id/dependencies`. */
 export const dependencyInputSchema = z.object({

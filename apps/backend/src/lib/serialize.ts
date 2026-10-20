@@ -10,6 +10,9 @@ export const taskInclude = {
     select: { id: true, name: true, department: true, avatarUrl: true },
   },
   dependencies: {
+    // Soft-deleted prerequisites are not "unfinished work" any more: dropping
+    // them here keeps `blocked` consistent with the project stats query.
+    where: { dependsOn: { deletedAt: null } },
     select: {
       dependsOn: {
         select: { id: true, title: true, status: true, clientVisible: true },

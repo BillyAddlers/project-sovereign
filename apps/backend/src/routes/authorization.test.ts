@@ -23,11 +23,24 @@ function headersFor(user: User): Record<string, string> {
   return { Cookie: cookieFor(user), "Content-Type": "application/json" };
 }
 
+/**
+ * The task PATCH contract requires `expectedVersion`. These tests exercise
+ * permissions, not concurrency, so read the current version and send it — a
+ * fresh version is always "correct" here. Concurrency is covered separately in
+ * `concurrency.test.ts`, which sends deliberately stale versions.
+ */
 async function patch(user: User, taskId: string, body: unknown): Promise<Response> {
+  const current = await prisma().task.findUnique({
+    where: { id: taskId },
+    select: { version: true },
+  });
   return app.request(`/api/tasks/${taskId}`, {
     method: "PATCH",
     headers: headersFor(user),
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      ...(body as Record<string, unknown>),
+      expectedVersion: current?.version ?? 1,
+    }),
   });
 }
 
@@ -76,6 +89,10 @@ async function createFixtures(): Promise<Fixtures> {
       where: { task: { projectId: { in: staleProjectIds } } },
     });
     await db.taskDependency.deleteMany({
+      where: { task: { projectId: { in: staleProjectIds } } },
+    });
+    // Audit rows point at tasks and users, so they go before either.
+    await db.auditLog.deleteMany({
       where: { task: { projectId: { in: staleProjectIds } } },
     });
     await db.task.deleteMany({ where: { projectId: { in: staleProjectIds } } });
@@ -248,6 +265,7 @@ describe.skipIf(!hasDatabase)("authorization", () => {
 
     await db.attachment.deleteMany({ where: { task: { projectId: { in: projectIds } } } });
     await db.taskDependency.deleteMany({ where: { task: { projectId: { in: projectIds } } } });
+    await db.auditLog.deleteMany({ where: { task: { projectId: { in: projectIds } } } });
     await db.task.deleteMany({ where: { projectId: { in: projectIds } } });
     await db.projectMember.deleteMany({ where: { projectId: { in: projectIds } } });
     await db.project.deleteMany({ where: { id: { in: projectIds } } });

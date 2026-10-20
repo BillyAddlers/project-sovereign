@@ -108,9 +108,25 @@ export const updateTaskSchema = z.object({
   assigneeId: z.uuid().nullable().optional(),
   clientVisible: z.boolean().optional(),
   status: taskStatusSchema.optional(),
+  /** The `version` last read; a stale value is rejected by the server with 409. */
+  expectedVersion: z.int().positive(),
 });
 
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+/** One immutable audit entry, as returned by `GET /api/tasks/:id/audit`. */
+export const auditLogSchema = z.object({
+  id: z.uuid(),
+  taskId: z.uuid(),
+  userId: z.uuid(),
+  action: z.enum(["create", "update", "delete"]),
+  changedColumn: z.string(),
+  oldValue: z.string().nullable(),
+  newValue: z.string().nullable(),
+  timestamp: z.iso.datetime(),
+});
+
+export type AuditLog = z.infer<typeof auditLogSchema>;
 
 export const dependencyInputSchema = z.object({ dependsOnId: z.uuid() });
 export type DependencyInput = z.infer<typeof dependencyInputSchema>;

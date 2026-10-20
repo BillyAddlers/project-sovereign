@@ -41,6 +41,11 @@ export class AppError extends Error {
     return new AppError(404, "NOT_FOUND", message);
   }
 
+  /** Optimistic-locking rejection: the row changed since the client read it. */
+  static versionConflict(message: string, details?: unknown): AppError {
+    return new AppError(409, "VERSION_CONFLICT", message, details);
+  }
+
   toBody(): ErrorBody {
     return {
       error: { code: this.code, message: this.message, details: this.details },

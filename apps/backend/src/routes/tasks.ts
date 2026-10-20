@@ -5,6 +5,7 @@ import { Hono } from "hono";
 
 import type { Prisma, TaskStatus } from "@/generated/prisma/client";
 import { projectAccessFor } from "@/lib/access";
+import { type AuditEntry, createEntries, deleteEntry, updateEntries } from "@/lib/audit";
 import { AppError } from "@/lib/errors";
 import { buildTaskQuery, paginate, paginationSchema } from "@/lib/paginate";
 import {
@@ -33,6 +34,23 @@ tasks.use("*", requireAuth);
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const UPLOAD_DIR = path.join(process.cwd(), "uploads");
+
+/**
+ * Append audit rows inside the caller's transaction, so a mutation and its
+ * trail commit or roll back together. A no-op when nothing actually changed.
+ */
+async function writeAudit(
+  tx: Prisma.TransactionClient,
+  taskId: string,
+  userId: string,
+  action: "create" | "update" | "delete",
+  entries: AuditEntry[],
+): Promise<void> {
+  if (entries.length === 0) return;
+  await tx.auditLog.createMany({
+    data: entries.map((entry) => ({ taskId, userId, action, ...entry })),
+  });
+}
 
 /** Follow "depends on" edges to see whether adding one would close a loop. */
 function createsCycle(
@@ -134,14 +152,18 @@ tasks.post("/", validated("json", createTaskSchema), async (c) => {
   }
 
   // A brand-new task has no dependents, so it cannot close a cycle — no check needed.
-  const task = await db.task.create({
-    data: {
-      ...fields,
-      ...(dependencyIds.length > 0
-        ? { dependencies: { create: dependencyIds.map((dependsOnId) => ({ dependsOnId })) } }
-        : {}),
-    },
-    include: taskInclude,
+  const task = await db.$transaction(async (tx) => {
+    const created = await tx.task.create({
+      data: {
+        ...fields,
+        ...(dependencyIds.length > 0
+          ? { dependencies: { create: dependencyIds.map((dependsOnId) => ({ dependsOnId })) } }
+          : {}),
+      },
+      include: taskInclude,
+    });
+    await writeAudit(tx, created.id, user.id, "create", createEntries(fields));
+    return created;
   });
   return c.json(serializeTask(task, user), 201);
 });
@@ -150,7 +172,7 @@ tasks.post("/", validated("json", createTaskSchema), async (c) => {
 tasks.patch("/:id", validated("json", updateTaskSchema), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const body = c.req.valid("json");
+  const { expectedVersion, ...body } = c.req.valid("json");
   const db = prisma();
 
   const task = await db.task.findFirst({
@@ -171,6 +193,7 @@ tasks.patch("/:id", validated("json", updateTaskSchema), async (c) => {
   const provided = Object.keys(body).filter(
     (key) => body[key as keyof typeof body] !== undefined,
   );
+  if (provided.length === 0) throw AppError.badRequest("No fields to update");
   const statusProvided = provided.includes("status");
   const otherFields = provided.filter((key) => key !== "status");
 
@@ -219,15 +242,48 @@ tasks.patch("/:id", validated("json", updateTaskSchema), async (c) => {
     ...(body.clientVisible !== undefined ? { clientVisible: body.clientVisible } : {}),
     ...(body.projectId !== undefined ? { projectId: body.projectId } : {}),
     ...(body.status !== undefined ? { status: body.status } : {}),
-    // Fase 3 will require an expected version; bumping now keeps the column honest.
-    version: { increment: 1 },
   };
 
-  const updated = await db.task.update({ where: { id }, data, include: taskInclude });
+  const entries = updateEntries(task, data);
+
+  // The version guard is the whole concurrency control: one conditional UPDATE
+  // means two racing writers cannot both match, so the loser is cleanly refused.
+  const applied = await db.$transaction(async (tx) => {
+    const result = await tx.task.updateMany({
+      where: { id, deletedAt: null, version: expectedVersion },
+      data: { ...data, version: { increment: 1 } },
+    });
+    if (result.count === 0) return false;
+    await writeAudit(tx, id, user.id, "update", entries);
+    return true;
+  });
+
+  if (!applied) {
+    // Distinguish "gone" from "changed": only a live, visible row is a conflict.
+    const current = await db.task.findFirst({
+      where: { AND: [{ id }, taskScope(user)] },
+      select: { version: true },
+    });
+    if (!current) throw AppError.notFound(`Task ${id} was not found`);
+    throw AppError.versionConflict("This task was changed by someone else", {
+      expectedVersion,
+      currentVersion: current.version,
+    });
+  }
+
+  const updated = await db.task.findFirst({ where: { id }, include: taskInclude });
+  if (!updated) throw AppError.notFound(`Task ${id} was not found`);
   return c.json(serializeTask(updated, user));
 });
 
-/** DELETE /api/tasks/:id — PM only. Soft delete arrives in Fase 3. */
+/**
+ * DELETE /api/tasks/:id — PM only, soft delete.
+ *
+ * Nothing is ever truly deleted: the row keeps its dependencies and
+ * attachments, `taskScope` hides it from every read, and the transition is
+ * recorded in the audit trail. A hard delete would also orphan the audit rows
+ * that point at the task.
+ */
 tasks.delete("/:id", async (c) => {
   const user = c.get("user");
   if (!canDeleteTask(user)) {
@@ -242,14 +298,38 @@ tasks.delete("/:id", async (c) => {
   });
   if (!existing) throw AppError.notFound(`Task ${id} was not found`);
 
-  // Dependencies reference the task from both sides, so they must go first.
-  await db.$transaction([
-    db.taskDependency.deleteMany({ where: { OR: [{ taskId: id }, { dependsOnId: id }] } }),
-    db.attachment.deleteMany({ where: { taskId: id } }),
-    db.task.delete({ where: { id } }),
-  ]);
+  const now = new Date();
+  await db.$transaction(async (tx) => {
+    await tx.task.update({
+      where: { id },
+      data: { deletedAt: now, version: { increment: 1 } },
+    });
+    await writeAudit(tx, id, user.id, "delete", [deleteEntry(now)]);
+  });
 
   return c.body(null, 204);
+});
+
+/** GET /api/tasks/:id/audit — PM-only, append-only change history. */
+tasks.get("/:id/audit", async (c) => {
+  const user = c.get("user");
+  if (user.role !== "pm") {
+    throw AppError.forbidden("Only a project manager can read the audit trail");
+  }
+
+  const id = c.req.param("id");
+  const db = prisma();
+  const task = await db.task.findFirst({
+    where: { AND: [{ id }, taskScope(user)] },
+    select: { id: true },
+  });
+  if (!task) throw AppError.notFound(`Task ${id} was not found`);
+
+  const rows = await db.auditLog.findMany({
+    where: { taskId: id },
+    orderBy: { timestamp: "asc" },
+  });
+  return c.json(rows);
 });
 
 /** POST /api/tasks/:id/dependencies — PM defines "this waits for that". */
@@ -285,8 +365,12 @@ tasks.post("/:id/dependencies", validated("json", dependencyInputSchema), async 
     throw AppError.badRequest("Dependencies must be in the same project");
   }
 
+  // Soft-deleted tasks are not part of the live graph, so they cannot close a loop.
   const links = await db.taskDependency.findMany({
-    where: { task: { projectId: task.projectId } },
+    where: {
+      task: { projectId: task.projectId, deletedAt: null },
+      dependsOn: { deletedAt: null },
+    },
     select: { taskId: true, dependsOnId: true },
   });
   if (createsCycle(id, dependsOnId, links)) {
@@ -319,6 +403,9 @@ tasks.delete("/:id/dependencies/:dependsOnId", async (c) => {
   const id = c.req.param("id");
   const dependsOnId = c.req.param("dependsOnId");
   const db = prisma();
+  const task = await db.task.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
+  if (!task) throw AppError.notFound(`Task ${id} was not found`);
+
   const existing = await db.taskDependency.findFirst({
     where: { taskId: id, dependsOnId },
   });
