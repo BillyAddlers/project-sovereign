@@ -75,7 +75,6 @@ export function DashboardView() {
   const stats = statsQuery.data;
   const tasks = useMemo(() => sortForGlance(tasksQuery.data?.data ?? []), [tasksQuery.data]);
   const glance = tasks.slice(0, 6);
-  const project = projectsQuery.data?.data.find((entry) => entry.id === projectId);
 
   const loading = projectsQuery.isPending || statsQuery.isPending || tasksQuery.isPending;
   const error = projectsQuery.error ?? statsQuery.error ?? tasksQuery.error;
@@ -109,8 +108,6 @@ export function DashboardView() {
               ))}
             </select>
           </label>
-        ) : project ? (
-          <span className="text-muted-foreground text-sm">{project.name}</span>
         ) : null}
       </div>
 

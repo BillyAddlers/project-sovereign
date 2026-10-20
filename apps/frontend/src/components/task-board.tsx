@@ -60,7 +60,6 @@ export function TaskBoard() {
   const projects = projectsQuery.data?.data ?? [];
   const allTasks = tasksQuery.data?.data ?? [];
   const engineers = engineersQuery.data?.data ?? [];
-  const project = projects.find((entry) => entry.id === projectId);
   const error = projectsQuery.error ?? tasksQuery.error;
 
   // Workers start on their own queue; the full project view stays one click away.
@@ -111,8 +110,6 @@ export function TaskBoard() {
                 ))}
               </select>
             </label>
-          ) : project ? (
-            <span className="text-muted-foreground text-sm">{project.name}</span>
           ) : null}
 
           {user?.role === "engineer" ? (
