@@ -26,10 +26,14 @@ export class ApiError extends Error {
   }
 }
 
+// No `Content-Type` default on purpose. Axios already sets `application/json`
+// for object bodies, but a JSON default also applies to `FormData` uploads:
+// its `transformRequest` sees "FormData + JSON content-type" and stringifies
+// the form to JSON, so the file never arrives as multipart. Leaving the header
+// unset lets the browser give `FormData` its boundary.
 export const http: AxiosInstance = axios.create({
   baseURL: `${env.apiBaseUrl}/api`,
   timeout: 10_000,
-  headers: { "Content-Type": "application/json" },
 });
 
 // Attach credentials so the backend can later move auth to httpOnly cookies.
@@ -82,7 +86,10 @@ export async function del(url: string): Promise<void> {
   await http.delete(url);
 }
 
-/** Multipart upload; Axios lets the browser set the multipart boundary. */
+/**
+ * Multipart upload. `http` carries no JSON default, so Axios passes the
+ * `FormData` through untouched and the browser sets the multipart boundary.
+ */
 export async function upload<TResponse>(url: string, form: FormData): Promise<TResponse> {
   const { data } = await http.post<TResponse>(url, form);
   return data;
