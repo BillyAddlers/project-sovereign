@@ -6,7 +6,7 @@
 >   Brief dipakai sebagai spec belajar; item submission bersifat opsional.
 > Keputusan struktur: **monorepo dipertahankan secara sadar** (deviasi dari brief
 >   "two separate repos" — tidak relevan untuk latihan, tapi tetap dicatat).
-> Terakhir diperbarui: 2026-10-19
+> Terakhir diperbarui: 2026-10-20
 
 ## Status ringkas
 
@@ -15,7 +15,7 @@
 | 0    | Fondasi monorepo                | ✅ Selesai    |
 | 0b   | Langkah 0: keputusan & fix kecil | ✅ Selesai    |
 | 1    | Domain model + Auth JWT         | ✅ Selesai    |
-| 2    | Authorization core              | 🟡 BE selesai |
+| 2    | Authorization core              | ✅ Selesai    |
 | 3    | Concurrency + audit trail       | ⬜            |
 | 4    | Frontend per-role (task board)  | ✅ Selesai    |
 | 5    | Deployment practice (opsional)  | ⬜            |
@@ -97,10 +97,10 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       → components/auth-guard.tsx membungkus app/page.tsx; 401 → replace /login
 - [x] Baca node_modules/next/dist/docs/ SEBELUM menulis kode frontend (Next 16 breaking changes)
 
-## Fase 2 — Authorization core (RBAC + ABAC + state-based permissions) 🟡
+## Fase 2 — Authorization core (RBAC + ABAC + state-based permissions) ✅
 > Inti pembelajaran #1 — "permissions that change based on task status".
-> Backend selesai + teruji (51 test, 0 fail). UI lock tombol sengaja ditunda ke
-> Fase 4 karena action UI di FE belum ada.
+> Backend selesai + teruji (64 test, 0 fail). UI lock tombol menyusul dan selesai
+> di Fase 4 saat action UI tersedia.
 - [x] Service izin terpusat — `src/lib/permissions.ts` (pure functions, unit-tested)
 - [x] PM: read/write penuh, DILARANG transisi ke `done` dari state mana pun
       (keputusan eksplisit: hanya executor/assignee yang boleh menyelesaikan task),
@@ -117,7 +117,10 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       (`taskScope`/`projectScope`)
 - [x] Dependency endpoints (`POST/DELETE /api/tasks/:id/dependencies`) + cegah self/cycle
 - [x] `blocked` turunan di setiap response task (bukan enum), + daftar dependency
-- [ ] UI: tombol aksi terkunci sesuai izin → **dipindah ke Fase 4** (action UI belum ada)
+- [x] UI: tombol aksi terkunci sesuai izin → selesai di Fase 4 (`task-card.tsx`)
+- [x] CRUD project PM-only: `GET /api/projects(/:id)`, `POST`, `PATCH`, `DELETE`
+      soft (409 `PROJECT_NOT_EMPTY` bila masih ada task) + kelola member
+      (`POST`/`DELETE /api/projects/:id/members[/:userId]`); response di-mask untuk Client
 
 ## Fase 3 — Concurrency + audit trail + soft delete
 > Inti pembelajaran #2 — "prevention of data concurrency conflicts".
@@ -171,6 +174,19 @@ Catatan: department `qa` ditambahkan lewat migration `20261009140949_add_qa_depa
       Serena sendiri (nested .gitignore mengurus cache/ + project.local.yml)
 
 ## Catatan keputusan
+- **Department bukan sumbu otorisasi** — `department` disimpan dan dipakai untuk
+  display/picker, tetapi keputusan izin hanya memakai role + state + relasi task.
+  Aturan brief "Frontend Engineer butuh task UI/UX Done" dimodelkan sebagai
+  **dependency antar-task** (`canTransitionStatus` + `dependenciesDone`), bukan
+  sebagai aturan per-department. Bila aturan per-department diperlukan, tambahkan
+  fungsi di `permissions.ts` + test-nya.
+- **CRUD project (PM-only)** — `permissions.ts` menambah `canCreateProject`,
+  `canEditProject`, `canDeleteProject`, `canManageProjectMembers`; response project
+  di-mask untuk Client (tanpa `clientId`/`members`) via `serializeProject`.
+- **DELETE project = soft delete + guard** — set `deletedAt`, tolak 409
+  `PROJECT_NOT_EMPTY` bila masih ada task hidup, karena `taskScope` tidak join
+  `project.deletedAt` (soft-delete project berisi task akan membocorkan task).
+  Fase 3 menggeneralisasi soft delete + audit ke Task.
 - **Login menampilkan akun demo** — halaman login punya panel akun (PM, QA, Frontend,
   Backend, Client) dengan tombol "Use"; subtitle dashboard disesuaikan per role.
 - **Dependency saat create** — `createTaskSchema` menerima `dependencyIds` (maks 20,

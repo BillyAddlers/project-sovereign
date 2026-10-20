@@ -129,10 +129,17 @@ sortable.
 | -------- | ------------ | ------------------------------------------------------------------ |
 | `GET`    | `/health`    | Liveness                                                           |
 | `GET`    | `/tasks`     | List — `page`, `rows`, `status`, `search`, `orderKey`, `orderRule` |
-| `POST`   | `/tasks`     | Create                                                             |
+| `POST`   | `/tasks`     | Create (PM only)                                                   |
 | `GET`    | `/tasks/:id` | Fetch one                                                          |
-| `PATCH`  | `/tasks/:id` | Update                                                             |
-| `DELETE` | `/tasks/:id` | Delete                                                             |
+| `PATCH`  | `/tasks/:id` | Update — status changes are state-ruled                            |
+| `DELETE` | `/tasks/:id` | Delete (PM only)                                                   |
+| `GET`    | `/projects`  | List — paginated, role-scoped                                      |
+| `POST`   | `/projects`  | Create (PM only)                                                   |
+| `GET`    | `/projects/:id` | Fetch one — masked for clients                                  |
+| `PATCH`  | `/projects/:id` | Update (PM only)                                                |
+| `DELETE` | `/projects/:id` | Soft delete (PM only; 409 if tasks remain)                      |
+| `POST`   | `/projects/:id/members` | Add member (PM only)                                   |
+| `DELETE` | `/projects/:id/members/:userId` | Remove member (PM only)                       |
 
 Lists return `{ data, meta: { page, rows, total, pageCount } }`. Failures
 always return `{ error: { code, message, details? } }`, including 400s — the
