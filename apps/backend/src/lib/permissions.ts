@@ -90,6 +90,27 @@ export function canUploadAttachment(actor: Actor, task: TaskLike): boolean {
   return actor.role === "engineer" && task.assigneeId === actor.id;
 }
 
+// ── Project writes ──────────────────────────────────────────────────────────
+
+// Only a PM plans work, so only a PM creates, edits, deletes, or staffs a
+// project. Reads are governed by `canViewProject` / `projectScope`.
+
+export function canCreateProject(actor: Actor): boolean {
+  return actor.role === "pm";
+}
+
+export function canEditProject(actor: Actor): boolean {
+  return actor.role === "pm";
+}
+
+export function canDeleteProject(actor: Actor): boolean {
+  return actor.role === "pm";
+}
+
+export function canManageProjectMembers(actor: Actor): boolean {
+  return actor.role === "pm";
+}
+
 // ── State-based transitions ─────────────────────────────────────────────────
 
 /**

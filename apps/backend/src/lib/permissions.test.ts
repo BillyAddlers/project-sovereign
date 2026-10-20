@@ -1,10 +1,14 @@
 import { describe, expect, it } from "bun:test";
 
 import {
+  canCreateProject,
   canCreateTask,
   canDefineDependency,
+  canDeleteProject,
   canDeleteTask,
+  canEditProject,
   canEditTaskFields,
+  canManageProjectMembers,
   canTransitionStatus,
   canUploadAttachment,
   canViewAttachment,
@@ -82,6 +86,21 @@ describe("write access", () => {
     expect(canUploadAttachment(otherEngineer, task())).toBe(false);
     expect(canUploadAttachment(pm, task({ assigneeId: null }))).toBe(true);
     expect(canUploadAttachment(client, task())).toBe(false);
+  });
+});
+
+describe("project write access", () => {
+  it("only PM creates, edits, deletes, and staffs projects", () => {
+    for (const decide of [
+      canCreateProject,
+      canEditProject,
+      canDeleteProject,
+      canManageProjectMembers,
+    ]) {
+      expect(decide(pm)).toBe(true);
+      expect(decide(engineer)).toBe(false);
+      expect(decide(client)).toBe(false);
+    }
   });
 });
 

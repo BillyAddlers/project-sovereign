@@ -115,18 +115,50 @@ export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export const dependencyInputSchema = z.object({ dependsOnId: z.uuid() });
 export type DependencyInput = z.infer<typeof dependencyInputSchema>;
 
-/** A project as returned by `GET /api/projects`. */
+/** A project member, embedded in non-client project responses. */
+export const projectMemberSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  role: userRoleSchema,
+  department: departmentSchema.nullable(),
+});
+
+/** A project as returned by `GET /api/projects`. Client responses omit `clientId`/`members`. */
 export const projectSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1).max(200),
   description: z.string().nullable(),
   status: z.enum(["active", "archived"]),
+  clientId: z.uuid().nullable().optional(),
+  members: z.array(projectMemberSchema).optional(),
 });
 
 export type Project = z.infer<typeof projectSchema>;
+export type ProjectMember = z.infer<typeof projectMemberSchema>;
 
 export const projectListSchema = paginatedSchema(projectSchema);
 export type ProjectList = z.infer<typeof projectListSchema>;
+
+/** Payload for `POST /api/projects` — PM only. Mirrors the server schema. */
+export const createProjectSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200),
+  description: z.string().trim().max(2000).optional(),
+  status: z.enum(["active", "archived"]).default("active"),
+  clientId: z.uuid().nullable().optional(),
+  memberIds: z.array(z.uuid()).max(50).optional(),
+});
+
+export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+
+/** Payload for `PATCH /api/projects/:id` — explicit and default-free. */
+export const updateProjectSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200).optional(),
+  description: z.string().trim().max(2000).optional(),
+  status: z.enum(["active", "archived"]).optional(),
+  clientId: z.uuid().nullable().optional(),
+});
+
+export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 
 /** Aggregate metrics chosen by the backend, scoped to the viewer's role. */
 export const projectStatsSchema = z.object({

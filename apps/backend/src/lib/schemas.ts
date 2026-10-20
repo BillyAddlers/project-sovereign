@@ -112,17 +112,62 @@ export const dependencyInputSchema = z.object({
 
 export type DependencyInput = z.infer<typeof dependencyInputSchema>;
 
+/** A project member, as embedded in non-client project responses. */
+export const projectMemberSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  role: userRoleSchema,
+  department: departmentSchema.nullable(),
+});
+
 export const projectSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1).max(200),
   description: z.string().nullable(),
   status: z.enum(["active", "archived"]),
+  // Present for PM/engineer; deliberately absent from the Client shape.
+  clientId: z.uuid().nullable().optional(),
+  members: z.array(projectMemberSchema).optional(),
 });
 
 export type Project = z.infer<typeof projectSchema>;
 
 export const projectListSchema = paginatedSchema(projectSchema);
 export type ProjectList = z.infer<typeof projectListSchema>;
+
+/** Body for `POST /api/projects` — PM only. */
+export const createProjectSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200),
+  description: z.string().trim().max(2000).optional(),
+  status: z.enum(["active", "archived"]).default("active"),
+  clientId: z.uuid().nullable().optional(),
+  /** Team members; clients are never members and are rejected explicitly. */
+  memberIds: z.array(z.uuid()).max(50).optional(),
+});
+
+export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+
+/**
+ * PATCH body — every field explicit and optional, with NO defaults.
+ *
+ * Same reason as `updateTaskSchema`: a `.partial()` would keep the create
+ * defaults, so renaming a project would silently reset its status.
+ */
+export const updateProjectSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200).optional(),
+  description: z.string().trim().max(2000).optional(),
+  status: z.enum(["active", "archived"]).optional(),
+  clientId: z.uuid().nullable().optional(),
+});
+
+export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
+
+/** Body for `POST /api/projects/:id/members`. */
+export const projectMemberInputSchema = z.object({
+  userId: z.uuid(),
+});
+
+export type ProjectMemberInput = z.infer<typeof projectMemberInputSchema>;
 
 /** Aggregate metrics for a project — the Client Guest's only read surface. */
 export const projectStatsSchema = z.object({

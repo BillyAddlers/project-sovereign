@@ -80,3 +80,43 @@ export function serializeTask(task: TaskWithRelations, actor: Actor) {
     attachments: task.attachments.map(serializeAttachment),
   };
 }
+
+/** Member identities every non-client project response needs. */
+export const projectInclude = {
+  members: {
+    select: {
+      user: { select: { id: true, name: true, role: true, department: true } },
+    },
+  },
+} satisfies Prisma.ProjectInclude;
+
+export type ProjectWithRelations = Prisma.ProjectGetPayload<{ include: typeof projectInclude }>;
+
+/**
+ * Shape a project for the actor who asked for it.
+ *
+ * Clients are isolated to their own project and receive only the metadata the
+ * brief allows — no client identity and no member names/departments, masked at
+ * the API rather than hidden in the UI.
+ */
+export function serializeProject(project: ProjectWithRelations, actor: Actor) {
+  const base = {
+    id: project.id,
+    name: project.name,
+    description: project.description,
+    status: project.status,
+  };
+
+  if (actor.role === "client") return base;
+
+  return {
+    ...base,
+    clientId: project.clientId,
+    members: project.members.map((member) => ({
+      id: member.user.id,
+      name: member.user.name,
+      role: member.user.role,
+      department: member.user.department,
+    })),
+  };
+}

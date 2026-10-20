@@ -222,8 +222,21 @@ describe.skipIf(!hasDatabase)("authorization", () => {
 
   afterAll(async () => {
     const db = prisma();
-    const projectIds = [f.project.id, f.foreign.id];
     const userIds = [f.pm.id, f.engineer.id, f.other.id, f.client.id];
+    // Include projects created during the tests: they are linked to these users
+    // through clientId or membership, so nothing is left behind.
+    const ownedProjects = await db.project.findMany({
+      where: {
+        OR: [
+          { clientId: { in: userIds } },
+          { members: { some: { userId: { in: userIds } } } },
+        ],
+      },
+      select: { id: true },
+    });
+    const projectIds = [
+      ...new Set([f.project.id, f.foreign.id, ...ownedProjects.map((project) => project.id)]),
+    ];
 
     const attachmentRows = await db.attachment.findMany({
       where: { task: { projectId: { in: projectIds } } },
@@ -458,5 +471,141 @@ describe.skipIf(!hasDatabase)("authorization", () => {
       }),
     });
     expect(res.status).toBe(400);
+  });
+
+  it("lets the PM create a project with a client and members", async () => {
+    const res = await app.request("/api/projects", {
+      method: "POST",
+      headers: headersFor(f.pm),
+      body: JSON.stringify({
+        name: `Created ${crypto.randomUUID()}`,
+        description: "fresh",
+        clientId: f.client.id,
+        memberIds: [f.engineer.id, f.other.id, f.other.id],
+      }),
+    });
+    expect(res.status).toBe(201);
+
+    const body = (await res.json()) as {
+      status: string;
+      clientId: string;
+      members: Array<{ id: string }>;
+    };
+    expect(body.status).toBe("active");
+    expect(body.clientId).toBe(f.client.id);
+    expect(body.members.map((member) => member.id).sort()).toEqual(
+      [f.engineer.id, f.other.id].sort(),
+    );
+  });
+
+  it("rejects project creation by an engineer", async () => {
+    const res = await app.request("/api/projects", {
+      method: "POST",
+      headers: headersFor(f.engineer),
+      body: JSON.stringify({ name: "Nope" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects a client id that is not a client-role user", async () => {
+    const res = await app.request("/api/projects", {
+      method: "POST",
+      headers: headersFor(f.pm),
+      body: JSON.stringify({ name: "Bad client", clientId: f.engineer.id }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("masks the client id and members from the Client project shape", async () => {
+    const res = await app.request(`/api/projects/${f.project.id}`, {
+      headers: headersFor(f.client),
+    });
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.name).toBe(f.project.name);
+    expect(body.clientId).toBeUndefined();
+    expect(body.members).toBeUndefined();
+  });
+
+  it("scopes project detail to members and hides foreign projects", async () => {
+    const member = await app.request(`/api/projects/${f.project.id}`, {
+      headers: headersFor(f.engineer),
+    });
+    expect(member.status).toBe(200);
+
+    const foreign = await app.request(`/api/projects/${f.foreign.id}`, {
+      headers: headersFor(f.engineer),
+    });
+    expect(foreign.status).toBe(404);
+  });
+
+  it("prevents an engineer from editing a project or its members", async () => {
+    const edit = await app.request(`/api/projects/${f.project.id}`, {
+      method: "PATCH",
+      headers: headersFor(f.engineer),
+      body: JSON.stringify({ name: "Hijacked" }),
+    });
+    expect(edit.status).toBe(403);
+
+    const staff = await app.request(`/api/projects/${f.project.id}/members`, {
+      method: "POST",
+      headers: headersFor(f.engineer),
+      body: JSON.stringify({ userId: f.pm.id }),
+    });
+    expect(staff.status).toBe(403);
+  });
+
+  it("lets the PM rename a project and manage its members", async () => {
+    const rename = await app.request(`/api/projects/${f.project.id}`, {
+      method: "PATCH",
+      headers: headersFor(f.pm),
+      body: JSON.stringify({ name: `Renamed ${crypto.randomUUID()}` }),
+    });
+    expect(rename.status).toBe(200);
+    const renamed = (await rename.json()) as { name: string };
+    expect(renamed.name.startsWith("Renamed ")).toBe(true);
+
+    const remove = await app.request(`/api/projects/${f.project.id}/members/${f.other.id}`, {
+      method: "DELETE",
+      headers: headersFor(f.pm),
+    });
+    expect(remove.status).toBe(204);
+
+    const add = await app.request(`/api/projects/${f.project.id}/members`, {
+      method: "POST",
+      headers: headersFor(f.pm),
+      body: JSON.stringify({ userId: f.other.id }),
+    });
+    expect(add.status).toBe(204);
+  });
+
+  it("refuses to delete a project that still has tasks", async () => {
+    const res = await app.request(`/api/projects/${f.project.id}`, {
+      method: "DELETE",
+      headers: headersFor(f.pm),
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("PROJECT_NOT_EMPTY");
+  });
+
+  it("soft-deletes an empty project so it disappears from reads", async () => {
+    const created = await app.request("/api/projects", {
+      method: "POST",
+      headers: headersFor(f.pm),
+      body: JSON.stringify({ name: `Deletable ${crypto.randomUUID()}`, clientId: f.client.id }),
+    });
+    expect(created.status).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+
+    const deleted = await app.request(`/api/projects/${id}`, {
+      method: "DELETE",
+      headers: headersFor(f.pm),
+    });
+    expect(deleted.status).toBe(204);
+
+    const gone = await app.request(`/api/projects/${id}`, { headers: headersFor(f.pm) });
+    expect(gone.status).toBe(404);
   });
 });
