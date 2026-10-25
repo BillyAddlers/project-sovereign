@@ -191,12 +191,6 @@ export function TaskCard({ task, role, userId, allTasks, engineers }: TaskCardPr
               Finish the prerequisites before this task can be started.
             </p>
           ) : null}
-
-          {role === "engineer" && !assignedToMe ? (
-            <p className="text-muted-foreground text-sm">
-              Read-only — assigned to {task.assignee?.name ?? "another engineer"}.
-            </p>
-          ) : null}
         </div>
       ) : null}
 
