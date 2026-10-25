@@ -13,28 +13,6 @@ function errorMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : "Something went wrong.";
 }
 
-function StatCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string | number;
-  hint?: string;
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-4xl tabular-nums">{value}</CardTitle>
-      </CardHeader>
-      {hint ? (
-        <CardContent className="text-muted-foreground pt-0 text-sm">{hint}</CardContent>
-      ) : null}
-    </Card>
-  );
-}
-
 const priorityOrder: Record<TaskPriority, number> = { high: 0, medium: 1, low: 2 };
 const statusOrder = { in_progress: 0, todo: 1, done: 2 } as const;
 
@@ -83,7 +61,7 @@ export function DashboardView() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+          <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground text-sm">
             {user?.role === "client"
               ? "Aggregate metrics for your project — only client-visible work is included."
@@ -139,51 +117,73 @@ export function DashboardView() {
       ) : null}
 
       {stats ? (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Total tasks" value={stats.total} />
-            <StatCard
-              label="Complete"
-              value={`${stats.percentComplete}%`}
-              hint={`${stats.byStatus.done} of ${stats.total} done`}
-            />
-            <StatCard label="In progress" value={stats.byStatus.in_progress} />
-            <StatCard label="Blocked" value={stats.blockedCount} hint="Waiting on dependencies" />
-          </div>
+        <section
+          aria-label="Project progress"
+          className="bg-primary text-primary-foreground dark:bg-secondary dark:text-secondary-foreground rounded-xl p-6 ring-1 ring-primary/20 sm:p-8"
+        >
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] xl:items-end">
+            <div>
+              <div className="flex items-baseline text-[64px] leading-none font-bold tracking-tight tabular-nums lg:text-[84px]">
+                {stats.percentComplete}
+                <span className="ml-1 text-[26px] font-semibold opacity-70 lg:text-[34px]">%</span>
+              </div>
+              <p className="text-primary-foreground/75 dark:text-secondary-foreground/75 mt-3 text-sm">
+                {stats.byStatus.done} of {stats.total} tasks done
+              </p>
+              <p className="text-primary-foreground/75 dark:text-secondary-foreground/75 flex items-center gap-2 text-sm">
+                <span
+                  aria-hidden
+                  className={
+                    stats.blockedCount > 0
+                      ? "bg-accent size-1.5 rounded-full"
+                      : "bg-primary-foreground/30 dark:bg-secondary-foreground/30 size-1.5 rounded-full"
+                  }
+                />
+                {stats.blockedCount > 0 ? (
+                  <>
+                    <span className="text-primary-foreground dark:text-secondary-foreground font-semibold tabular-nums">
+                      {stats.blockedCount}
+                    </span>
+                    blocked, waiting on dependencies
+                  </>
+                ) : (
+                  "Nothing blocked"
+                )}
+              </p>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Progress</CardTitle>
-              <CardDescription>Done versus total tasks in this project.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="bg-muted h-3 w-full overflow-hidden rounded-full">
+            <div className="space-y-4">
+              <div className="bg-primary-foreground/15 dark:bg-secondary-foreground/15 h-4 w-full overflow-hidden rounded-full">
                 <div
-                  className="bg-primary h-full rounded-full transition-[width]"
+                  className="bg-accent h-full rounded-full transition-[width]"
                   style={{ width: `${stats.percentComplete}%` }}
                 />
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {(["todo", "in_progress", "done"] as const).map((status) => (
-                  <div
-                    key={status}
-                    className="bg-muted/50 flex items-center justify-between rounded-md px-3 py-3 text-sm"
-                  >
-                    <StatusBadge status={status} />
-                    <span className="text-base font-medium tabular-nums">
-                      {stats.byStatus[status]}
-                    </span>
+
+              <dl className="border-primary-foreground/20 dark:border-secondary-foreground/20 grid grid-cols-3 gap-3 border-t pt-4">
+                {(
+                  [
+                    ["To do", stats.byStatus.todo],
+                    ["In progress", stats.byStatus.in_progress],
+                    ["Done", stats.byStatus.done],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-primary-foreground/70 dark:text-secondary-foreground/70 text-xs">
+                      {label}
+                    </dt>
+                    <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
                   </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        </>
+              </dl>
+            </div>
+          </div>
+        </section>
       ) : null}
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Tasks at a glance</CardTitle>
+          <CardTitle className="text-lg font-semibold">Tasks at a glance</CardTitle>
           <CardDescription>
             {user?.role === "client"
               ? "Only tasks marked client-visible."
@@ -202,13 +202,13 @@ export function DashboardView() {
           {!tasksQuery.isPending && tasks.length === 0 ? (
             <p className="text-muted-foreground text-sm">No tasks in this project yet.</p>
           ) : null}
-          <ul className="space-y-2">
+          <ul className="divide-border divide-y">
             {glance.map((task) => (
               <li
                 key={task.id}
-                className="border-border flex flex-wrap items-center gap-2 rounded-md border p-4 text-base"
+                className="flex flex-wrap items-center gap-2 py-3 text-base first:pt-0 last:pb-0"
               >
-                <span className="font-medium">{task.title}</span>
+                <span className="w-full text-base font-semibold sm:w-auto">{task.title}</span>
                 <StatusBadge status={task.status} />
                 <PriorityBadge priority={task.priority} />
                 {task.blocked ? <BlockedBadge /> : null}
