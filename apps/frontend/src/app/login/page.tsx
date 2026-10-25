@@ -52,7 +52,7 @@ export default function LoginPage() {
       <div className="grid w-full max-w-4xl gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Sign in</CardTitle>
+            <CardTitle className="text-lg font-semibold">Sign in</CardTitle>
             <CardDescription>Use one of the seeded demo accounts.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -113,7 +113,7 @@ export default function LoginPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Demo accounts</CardTitle>
+            <CardTitle className="text-lg font-semibold">Demo accounts</CardTitle>
             <CardDescription>
               Click <span className="font-medium">Use</span> to fill the form. Password for every
               account: <span className="font-mono">{DEMO_PASSWORD}</span>.
