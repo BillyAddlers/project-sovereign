@@ -6,6 +6,16 @@
 # compose.yaml (production images, no source mount) — do not run both at once,
 # since they bind the same host ports.
 #
+# `bun run db:up` also publishes 127.0.0.1:5432 (container
+# project-sovereign-postgres), so stop it before starting this stack. If you need
+# both, publish the dev database elsewhere and point host-side Prisma/psql at it:
+#
+#   POSTGRES_PORT=5433 podman-compose -f compose.dev.yaml up --build
+#   # then DATABASE_URL=...@localhost:5433/... in apps/backend/.env
+#
+# The backend always reaches Postgres as db:5432 over the internal network; only
+# the host port changes.
+#
 # How hot reload works here:
 #   * The app source directories are bind-mounted into the containers, so a save on
 #     the host is visible inside immediately.
@@ -33,7 +43,7 @@ services:
       POSTGRES_DB: project_sovereign
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - dev-pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -58,11 +68,28 @@ services:
       CORS_ORIGIN: http://127.0.0.1:3000
       NODE_ENV: development
       LOG_LEVEL: debug
+      # Required by src/lib/env.ts (min 32 chars). Dev-only value; override it in
+      # the shell or a local env file for anything beyond isolated testing.
+      JWT_SECRET: "${JWT_SECRET:-dev-only-jwt-secret-change-me-000000}"
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "127.0.0.1:3001:3001"
+    healthcheck:
+      # The entrypoint applies migrations and regenerates Prisma before Bun
+      # starts, so allow a generous warm-up on a fresh volume.
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r = await fetch('http://127.0.0.1:3001/api/health'); process.exit(r.ok ? 0 : 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     volumes:
       # Live source.
       - ./apps/backend:/app/apps/backend
@@ -89,13 +116,25 @@ services:
       # change here needs a rebuild to take effect.
       NEXT_PUBLIC_BE_URL: http://127.0.0.1:3001
       NEXT_TELEMETRY_DISABLED: "1"
-      # Writable build cache inside the container, so the host stays clean.
-      NEXT_CACHE_DIR: /app/apps/frontend/.next
       HOSTNAME: 0.0.0.0
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "127.0.0.1:3000:3000"
+    healthcheck:
+      # First request triggers a Turbopack compile, hence the long start period.
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r = await fetch('http://127.0.0.1:3000/login'); process.exit(r.ok ? 0 : 1)",
+        ]
+      interval: 10s
+      timeout: 15s
+      retries: 12
+      start_period: 90s
     volumes:
       - ./apps/frontend:/app/apps/frontend
       - ./apps/backend/package.json:/app/apps/backend/package.json:ro
