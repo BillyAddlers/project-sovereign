@@ -49,7 +49,8 @@ export function canViewTask(actor: Actor, task: TaskLike, access: ProjectAccess)
     case "pm":
       return true;
     case "engineer":
-      return access.isMember;
+      // Per-user isolation: an engineer only sees tasks assigned to them.
+      return task.assigneeId === actor.id;
     case "client":
       // Multi-tenant isolation + the Client-Visible flag, enforced server-side.
       return access.isClient && task.clientVisible;

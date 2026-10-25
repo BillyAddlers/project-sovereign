@@ -300,9 +300,9 @@ describe.skipIf(!hasDatabase)("authorization", () => {
     expect(res.status).toBe(403);
   });
 
-  it("prevents an engineer from moving a task assigned to someone else", async () => {
+  it("hides a task assigned to someone else from an engineer", async () => {
     const res = await patch(f.engineer, f.tOther.id, { status: "in_progress" });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("prevents starting a task with an unfinished dependency", async () => {
@@ -351,7 +351,8 @@ describe.skipIf(!hasDatabase)("authorization", () => {
     });
     expect(clientDownload.status).toBe(404);
 
-    // An engineer cannot attach to a task assigned to someone else.
+    // An engineer cannot attach to a task assigned to someone else — the task
+    // is not visible to them, so it reads as missing rather than forbidden.
     const deniedForm = new FormData();
     deniedForm.append("file", new File(["nope"], "nope.txt", { type: "text/plain" }));
     const denied = await app.request(`/api/tasks/${f.tOther.id}/attachments`, {
@@ -359,7 +360,7 @@ describe.skipIf(!hasDatabase)("authorization", () => {
       headers: { Cookie: cookieFor(f.engineer) },
       body: deniedForm,
     });
-    expect(denied.status).toBe(403);
+    expect(denied.status).toBe(404);
   });
 
   it("lets the PM list engineers but not the engineers themselves", async () => {
@@ -435,13 +436,14 @@ describe.skipIf(!hasDatabase)("authorization", () => {
     expect(body.blockedCount).toBe(2);
   });
 
-  it("scopes the engineer's list to their member projects", async () => {
+  it("scopes the engineer's list to their assigned tasks", async () => {
     const res = await app.request("/api/tasks?rows=100", { headers: headersFor(f.engineer) });
     expect(res.status).toBe(200);
 
     const body = (await res.json()) as { data: Array<{ id: string }> };
     const ids = body.data.map((row) => row.id);
     expect(ids).toContain(f.tStart.id);
+    expect(ids).not.toContain(f.tOther.id);
     expect(ids).not.toContain(f.tForeign.id);
   });
 

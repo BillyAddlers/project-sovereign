@@ -13,11 +13,8 @@ export function taskScope(actor: Actor): Prisma.TaskWhereInput {
     case "pm":
       return { deletedAt: null };
     case "engineer":
-      // "Can only view task details on projects assigned to them."
-      return {
-        deletedAt: null,
-        project: { members: { some: { userId: actor.id } } },
-      };
+      // Per-user isolation: an engineer's tenant is their assigned tasks.
+      return { deletedAt: null, assigneeId: actor.id };
     case "client":
       // "Only tasks explicitly flagged as Client-Visible" + own project only.
       return {

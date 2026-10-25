@@ -43,11 +43,12 @@ describe("read access", () => {
     expect(canViewTask(pm, task({ clientVisible: false }), outsider)).toBe(true);
   });
 
-  it("engineers only see projects they are members of", () => {
+  it("engineers only see tasks assigned to them", () => {
     expect(canViewProject(engineer, member)).toBe(true);
     expect(canViewProject(engineer, outsider)).toBe(false);
-    expect(canViewTask(engineer, task(), member)).toBe(true);
-    expect(canViewTask(engineer, task(), outsider)).toBe(false);
+    expect(canViewTask(engineer, task(), member)).toBe(true); // assigneeId === eng-id
+    expect(canViewTask(engineer, task(), outsider)).toBe(true); // assignment, not membership
+    expect(canViewTask(engineer, task({ assigneeId: "eng-other" }), member)).toBe(false);
   });
 
   it("clients only see their own project and client-visible tasks", () => {
