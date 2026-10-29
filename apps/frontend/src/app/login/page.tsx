@@ -50,7 +50,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">
       <div className="grid w-full max-w-4xl gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="glass-lift">
           <CardHeader>
             <CardTitle className="text-lg font-semibold">Sign in</CardTitle>
             <CardDescription>Use one of the seeded demo accounts.</CardDescription>
@@ -111,7 +111,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-lift">
           <CardHeader>
             <CardTitle className="text-lg font-semibold">Demo accounts</CardTitle>
             <CardDescription>
@@ -123,7 +123,7 @@ export default function LoginPage() {
             {demoAccounts.map((account) => (
               <div
                 key={account.email}
-                className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                className="flex items-center justify-between gap-3 rounded-lg border border-white/60 bg-white/50 p-3 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.05]"
               >
                 <div className="min-w-0">
                   <div className="text-sm font-medium">{account.label}</div>

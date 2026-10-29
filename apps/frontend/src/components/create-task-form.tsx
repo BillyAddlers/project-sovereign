@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCreateTask, useEngineers, useProjects, useTasks } from "@/hooks/use-tasks";
 import { ApiError } from "@/lib/api";
 import { type CreateTaskInput, createTaskSchema, type Task } from "@/lib/schemas";
+import { formatTimeInput } from "@/lib/utils";
 
 type FormInput = z.input<typeof createTaskSchema>;
 type FormOutput = z.output<typeof createTaskSchema>;
@@ -21,9 +22,12 @@ type FormOutput = z.output<typeof createTaskSchema>;
 /** PM-only create form. Engineers act on assigned work; they do not plan it. */
 export function CreateTaskForm({
   defaultProjectId,
+  lockedProjectId,
   onCreated,
 }: {
   defaultProjectId?: string;
+  /** When set, the task is fixed to this project and the picker is hidden. */
+  lockedProjectId?: string;
   onCreated?: () => void;
 }) {
   const projectsQuery = useProjects();
@@ -35,6 +39,8 @@ export function CreateTaskForm({
   const assigneeIdId = useId();
   const priorityId = useId();
   const clientVisibleId = useId();
+  const deadlineDateId = useId();
+  const deadlineTimeId = useId();
 
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(createTaskSchema),
@@ -42,9 +48,11 @@ export function CreateTaskForm({
       title: "",
       description: "",
       priority: "medium",
-      projectId: defaultProjectId ?? "",
+      projectId: lockedProjectId ?? defaultProjectId ?? "",
       clientVisible: false,
       dependencyIds: [],
+      deadlineDate: "",
+      deadlineTime: "",
     },
     mode: "onBlur",
   });
@@ -97,39 +105,41 @@ export function CreateTaskForm({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor={projectIdId}>Project</Label>
-          <select
-            id={projectIdId}
-            className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-            disabled={projectsQuery.isPending}
-            aria-invalid={Boolean(form.formState.errors.projectId)}
-            {...form.register("projectId", {
-              // Prerequisites must live in the same project — drop the selection.
-              onChange: () => form.setValue("dependencyIds", []),
-            })}
-          >
-            <option value="" disabled>
-              {projectsQuery.isPending ? "Loading projects…" : "Select a project"}
-            </option>
-            {projectsQuery.data?.data.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
+        {!lockedProjectId ? (
+          <div className="space-y-2">
+            <Label htmlFor={projectIdId}>Project</Label>
+            <select
+              id={projectIdId}
+              className="border-input h-9 w-full rounded-md border bg-white/60 px-2 text-sm dark:bg-white/[0.07]"
+              disabled={projectsQuery.isPending}
+              aria-invalid={Boolean(form.formState.errors.projectId)}
+              {...form.register("projectId", {
+                // Prerequisites must live in the same project — drop the selection.
+                onChange: () => form.setValue("dependencyIds", []),
+              })}
+            >
+              <option value="" disabled>
+                {projectsQuery.isPending ? "Loading projects…" : "Select a project"}
               </option>
-            ))}
-          </select>
-          {form.formState.errors.projectId ? (
-            <p role="alert" className="text-destructive text-sm">
-              {form.formState.errors.projectId.message}
-            </p>
-          ) : null}
-        </div>
+              {projectsQuery.data?.data.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            {form.formState.errors.projectId ? (
+              <p role="alert" className="text-destructive text-sm">
+                {form.formState.errors.projectId.message}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <Label htmlFor={assigneeIdId}>Assignee</Label>
           <select
             id={assigneeIdId}
-            className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+            className="border-input h-9 w-full rounded-md border bg-white/60 px-2 text-sm dark:bg-white/[0.07]"
             disabled={engineersQuery.isPending}
             {...form.register("assigneeId", {
               setValueAs: (value: string) => (value === "" ? undefined : value),
@@ -151,7 +161,7 @@ export function CreateTaskForm({
           <Label htmlFor={priorityId}>Priority</Label>
           <select
             id={priorityId}
-            className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+            className="border-input h-9 w-full rounded-md border bg-white/60 px-2 text-sm dark:bg-white/[0.07]"
             {...form.register("priority")}
           >
             <option value="low">Low</option>
@@ -170,6 +180,42 @@ export function CreateTaskForm({
             />
             Visible to the client
           </label>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor={deadlineDateId}>Deadline date</Label>
+          <Input
+            id={deadlineDateId}
+            type="date"
+            {...form.register("deadlineDate", {
+              setValueAs: (value: string) => (value === "" ? undefined : value),
+            })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={deadlineTimeId}>Deadline time</Label>
+          <Input
+            id={deadlineTimeId}
+            type="text"
+            maxLength={5}
+            placeholder="HH:MM"
+            autoComplete="off"
+            {...form.register("deadlineTime", {
+              setValueAs: (value: string) => (value === "" ? undefined : value),
+            })}
+            onChange={(event) => {
+              const formatted = formatTimeInput(event.target.value);
+              event.target.value = formatted;
+              form.setValue("deadlineTime", formatted || undefined, { shouldDirty: true });
+            }}
+          />
+          {form.formState.errors.deadlineTime ? (
+            <p role="alert" className="text-destructive text-sm">
+              {form.formState.errors.deadlineTime.message}
+            </p>
+          ) : null}
         </div>
       </div>
 

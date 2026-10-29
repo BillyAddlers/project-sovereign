@@ -135,8 +135,13 @@ tasks.post("/", validated("json", createTaskSchema), async (c) => {
   if (!project) throw AppError.badRequest("Unknown project", { projectId: input.projectId });
 
   // Duplicate ids are harmless input; keep one edge per prerequisite.
-  const { dependencyIds: rawDependencyIds, ...fields } = input;
+  const { dependencyIds: rawDependencyIds, deadlineDate, ...rest } = input;
   const dependencyIds = [...new Set(rawDependencyIds ?? [])];
+  // `deadlineDate` arrives as `YYYY-MM-DD`; Prisma stores it as a Date (UTC midnight).
+  const fields = {
+    ...rest,
+    ...(deadlineDate ? { deadlineDate: new Date(deadlineDate) } : {}),
+  };
 
   if (dependencyIds.length > 0) {
     const prerequisites = await db.task.findMany({
@@ -242,6 +247,10 @@ tasks.patch("/:id", validated("json", updateTaskSchema), async (c) => {
     ...(body.clientVisible !== undefined ? { clientVisible: body.clientVisible } : {}),
     ...(body.projectId !== undefined ? { projectId: body.projectId } : {}),
     ...(body.status !== undefined ? { status: body.status } : {}),
+    ...(body.deadlineDate !== undefined
+      ? { deadlineDate: body.deadlineDate === null ? null : new Date(body.deadlineDate) }
+      : {}),
+    ...(body.deadlineTime !== undefined ? { deadlineTime: body.deadlineTime } : {}),
   };
 
   const entries = updateEntries(task, data);

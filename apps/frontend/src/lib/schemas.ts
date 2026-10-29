@@ -5,6 +5,9 @@ export const taskPrioritySchema = z.enum(["low", "medium", "high"]);
 export const userRoleSchema = z.enum(["pm", "engineer", "client"]);
 export const departmentSchema = z.enum(["uiux", "frontend", "backend", "qa"]);
 
+/** Wall-clock deadline time, a zero-padded `HH:MM`. Mirrors the server schema. */
+export const timeOfDaySchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Time must be HH:MM");
+
 export const taskDependencyRefSchema = z.object({
   id: z.uuid(),
   title: z.string(),
@@ -29,6 +32,8 @@ export const taskSchema = z.object({
   priority: taskPrioritySchema,
   projectId: z.uuid(),
   clientVisible: z.boolean(),
+  deadlineDate: z.iso.date().nullable(),
+  deadlineTime: timeOfDaySchema.nullable(),
   version: z.int().positive(),
   blocked: z.boolean(),
   dependencies: z.array(taskDependencyRefSchema),
@@ -90,6 +95,8 @@ export const createTaskSchema = z.object({
   assigneeId: z.uuid().optional(),
   clientVisible: z.boolean().default(false),
   dependencyIds: z.array(z.uuid()).max(20).optional(),
+  deadlineDate: z.iso.date().optional(),
+  deadlineTime: timeOfDaySchema.optional(),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
@@ -108,6 +115,8 @@ export const updateTaskSchema = z.object({
   assigneeId: z.uuid().nullable().optional(),
   clientVisible: z.boolean().optional(),
   status: taskStatusSchema.optional(),
+  deadlineDate: z.iso.date().nullable().optional(),
+  deadlineTime: timeOfDaySchema.nullable().optional(),
   /** The `version` last read; a stale value is rejected by the server with 409. */
   expectedVersion: z.int().positive(),
 });

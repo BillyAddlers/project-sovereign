@@ -4,7 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiError } from "@/lib/api";
 import * as resources from "@/lib/resources";
-import type { CreateTaskInput, TaskQuery, UpdateTaskInput } from "@/lib/schemas";
+import type {
+  CreateProjectInput,
+  CreateTaskInput,
+  TaskQuery,
+  UpdateTaskInput,
+} from "@/lib/schemas";
 
 export const queryKeys = {
   tasks: (query: TaskQuery) => ["tasks", query] as const,
@@ -31,6 +36,16 @@ export function useProjectStats(projectId: string | undefined) {
     queryKey: queryKeys.stats(projectId ?? "none"),
     queryFn: () => resources.fetchProjectStats(projectId as string),
     enabled: Boolean(projectId),
+  });
+}
+
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateProjectInput) => resources.createProject(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+    },
   });
 }
 

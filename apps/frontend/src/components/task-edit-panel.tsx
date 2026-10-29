@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAddDependency, useRemoveDependency, useUpdateTask } from "@/hooks/use-tasks";
 import { ApiError } from "@/lib/api";
 import { type PublicUser, type Task, type TaskPriority, updateTaskSchema } from "@/lib/schemas";
+import { formatTimeInput } from "@/lib/utils";
 
 function message(error: unknown): string {
   return error instanceof ApiError ? error.message : "Something went wrong.";
@@ -34,6 +35,8 @@ export function TaskEditPanel({ task, engineers, allTasks, onClose }: TaskEditPa
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
   const [assigneeId, setAssigneeId] = useState(task.assigneeId ?? "");
   const [clientVisible, setClientVisible] = useState(task.clientVisible);
+  const [deadlineDate, setDeadlineDate] = useState(task.deadlineDate ?? "");
+  const [deadlineTime, setDeadlineTime] = useState(task.deadlineTime ?? "");
 
   const dependencyCandidates = allTasks.filter(
     (candidate) => candidate.projectId === task.projectId && candidate.id !== task.id,
@@ -46,6 +49,8 @@ export function TaskEditPanel({ task, engineers, allTasks, onClose }: TaskEditPa
       priority,
       assigneeId: assigneeId || null,
       clientVisible,
+      deadlineDate: deadlineDate || null,
+      deadlineTime: deadlineTime || null,
       expectedVersion: task.version,
     });
     if (!parsed.success) {
@@ -65,7 +70,7 @@ export function TaskEditPanel({ task, engineers, allTasks, onClose }: TaskEditPa
   };
 
   return (
-    <div className="bg-muted/40 mt-3 space-y-4 rounded-md border p-3">
+    <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <Label htmlFor={`title-${task.id}`}>Title</Label>
@@ -79,7 +84,7 @@ export function TaskEditPanel({ task, engineers, allTasks, onClose }: TaskEditPa
           <Label htmlFor={`priority-${task.id}`}>Priority</Label>
           <select
             id={`priority-${task.id}`}
-            className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+            className="border-input h-9 w-full rounded-md border bg-white/60 px-2 text-sm dark:bg-white/[0.07]"
             value={priority}
             onChange={(event) => setPriority(event.target.value as TaskPriority)}
           >
@@ -94,7 +99,7 @@ export function TaskEditPanel({ task, engineers, allTasks, onClose }: TaskEditPa
         <Label htmlFor={`assignee-${task.id}`}>Assignee</Label>
         <select
           id={`assignee-${task.id}`}
-          className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+          className="border-input h-9 w-full rounded-md border bg-white/60 px-2 text-sm dark:bg-white/[0.07]"
           value={assigneeId}
           onChange={(event) => setAssigneeId(event.target.value)}
         >
@@ -126,6 +131,30 @@ export function TaskEditPanel({ task, engineers, allTasks, onClose }: TaskEditPa
         />
         Client-visible
       </label>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor={`deadline-date-${task.id}`}>Deadline date</Label>
+          <Input
+            id={`deadline-date-${task.id}`}
+            type="date"
+            value={deadlineDate}
+            onChange={(event) => setDeadlineDate(event.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`deadline-time-${task.id}`}>Deadline time</Label>
+          <Input
+            id={`deadline-time-${task.id}`}
+            type="text"
+            maxLength={5}
+            placeholder="HH:MM"
+            autoComplete="off"
+            value={deadlineTime}
+            onChange={(event) => setDeadlineTime(formatTimeInput(event.target.value))}
+          />
+        </div>
+      </div>
 
       <DependencyPicker
         candidates={dependencyCandidates}

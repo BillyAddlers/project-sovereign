@@ -45,7 +45,7 @@ export function DependencyPicker({
           {selected.map((item) => (
             <li
               key={item.id}
-              className="bg-muted flex items-center gap-2 rounded-full px-3 py-1 text-sm"
+              className="flex items-center gap-2 rounded-full border border-black/5 bg-white/60 px-3 py-1 text-sm dark:border-white/10 dark:bg-white/[0.08]"
             >
               <span>{item.title}</span>
               <button
@@ -64,7 +64,7 @@ export function DependencyPicker({
 
       <div className="flex flex-wrap gap-2">
         <select
-          className="border-input bg-background h-9 min-w-0 flex-1 rounded-md border px-2 text-sm"
+          className="border-input h-9 min-w-0 flex-1 rounded-md border bg-white/60 px-2 text-sm dark:bg-white/[0.07]"
           value={chosen}
           disabled={disabled || available.length === 0}
           onChange={(event) => setChosen(event.target.value)}

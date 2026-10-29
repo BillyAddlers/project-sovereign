@@ -10,6 +10,11 @@ import { z } from "zod";
 
 export const taskStatusSchema = z.enum(["todo", "in_progress", "done"]);
 export const taskPrioritySchema = z.enum(["low", "medium", "high"]);
+
+/** Wall-clock time of a task deadline, stored and returned as a zero-padded `HH:MM`. */
+export const timeOfDaySchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Time must be HH:MM");
 export const userRoleSchema = z.enum(["pm", "engineer", "client"]);
 export const departmentSchema = z.enum(["uiux", "frontend", "backend", "qa"]);
 
@@ -37,6 +42,8 @@ export const taskSchema = z.object({
   priority: taskPrioritySchema,
   projectId: z.uuid(),
   clientVisible: z.boolean(),
+  deadlineDate: z.iso.date().nullable(),
+  deadlineTime: timeOfDaySchema.nullable(),
   version: z.int().positive(),
   /** Derived, never stored: at least one prerequisite is unfinished. */
   blocked: z.boolean(),
@@ -82,6 +89,8 @@ export const createTaskSchema = z.object({
   clientVisible: z.boolean().default(false),
   /** Prerequisites chosen at creation time; the task starts blocked until done. */
   dependencyIds: z.array(z.uuid()).max(20).optional(),
+  deadlineDate: z.iso.date().optional(),
+  deadlineTime: timeOfDaySchema.optional(),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
@@ -101,6 +110,9 @@ export const updateTaskSchema = z.object({
   assigneeId: z.uuid().nullable().optional(),
   clientVisible: z.boolean().optional(),
   status: taskStatusSchema.optional(),
+  /** Nullable so a PATCH can clear a deadline (`null`), not only set it. */
+  deadlineDate: z.iso.date().nullable().optional(),
+  deadlineTime: timeOfDaySchema.nullable().optional(),
   /**
    * The `version` the client last read. The write is applied only while the row
    * still carries it, so two concurrent writers cannot silently overwrite each

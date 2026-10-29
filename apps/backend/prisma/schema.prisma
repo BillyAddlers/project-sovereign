@@ -158,6 +158,8 @@ model Task {
   projectId      String       @db.Uuid
   assigneeId     String?      @db.Uuid
   clientVisible  Boolean      @default(false)
+  deadlineDate   DateTime?    @db.Date
+  deadlineTime   String?
   deletedAt      DateTime?
   version        Int          @default(1)
   createdAt      DateTime     @default(now()) @map("created_at")

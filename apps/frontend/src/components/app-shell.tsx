@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarDays,
   LayoutDashboard,
   ListTodo,
   LogOut,
@@ -12,7 +13,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
-
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { useLogout, useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ import { useUiStore } from "@/store/ui-store";
 const navigation = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/board", label: "Task Board", icon: ListTodo },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
 ] as const;
 
 const roleLabel: Record<string, string> = {
@@ -76,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside
         aria-label="Main navigation"
         className={cn(
-          "bg-card fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r transition-[width,translate] duration-200",
+          "glass-chrome fixed inset-y-0 left-0 z-40 flex w-64 flex-col transition-[width,translate] duration-200",
           collapsed ? "lg:w-16" : "lg:w-56",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
@@ -112,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <button
             type="button"
-            className="text-muted-foreground hover:text-foreground shrink-0 rounded-md p-1 lg:hidden"
+            className="text-muted-foreground hover:text-foreground grid min-h-11 min-w-11 shrink-0 place-items-center rounded-md lg:hidden"
             aria-label="Close navigation"
             onClick={() => setMobileOpen(false)}
           >
@@ -132,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 title={collapsed ? item.label : undefined}
                 onClick={closeMobile}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-3 text-sm font-medium transition-colors",
                   collapsed && "lg:mx-auto lg:size-9 lg:justify-center lg:p-0",
                   active
                     ? "bg-primary/10 text-primary"
@@ -152,6 +154,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             collapsed && "lg:flex lg:flex-col lg:items-center lg:justify-center lg:gap-2 lg:p-1",
           )}
         >
+          <ThemeToggle collapsed={collapsed} />
+
           {user ? (
             <div
               className={cn(
@@ -176,7 +180,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             type="button"
             variant="outline"
             size="sm"
-            className={cn("w-full justify-center gap-2", collapsed && "lg:size-8 lg:p-0")}
+            className={cn("h-11 w-full justify-center gap-2", collapsed && "lg:size-8 lg:p-0")}
             disabled={logout.isPending}
             onClick={signOut}
             title={collapsed ? "Sign out" : undefined}
@@ -195,17 +199,20 @@ export function AppShell({ children }: { children: ReactNode }) {
           collapsed ? "lg:pl-16" : "lg:pl-56",
         )}
       >
-        <header className="bg-card/80 sticky top-0 z-20 flex h-14 items-center gap-3 border-b px-3 backdrop-blur lg:hidden">
+        <header className="glass-chrome sticky top-0 z-20 flex h-14 items-center gap-3 px-3 lg:hidden">
           <button
             type="button"
-            className="text-muted-foreground hover:text-foreground rounded-md p-1.5"
+            className="text-muted-foreground hover:text-foreground grid min-h-11 min-w-11 place-items-center rounded-md"
             aria-label="Open navigation"
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="size-5" />
           </button>
-          <span className="font-semibold tracking-tight">Project Sovereign</span>
+          <span className="min-w-0 flex-1 truncate font-semibold tracking-tight">
+            Project Sovereign
+          </span>
+          <ThemeToggle />
         </header>
 
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:py-10">

@@ -143,6 +143,15 @@ interface TaskSeed {
   status: "todo" | "in_progress" | "done";
   assigneeEmail: string | null;
   clientVisible: boolean;
+  deadlineDate: string;
+  deadlineTime: string;
+}
+
+/** A deadline date `offset` days from now, as `YYYY-MM-DD` (UTC-safe). */
+function isoDay(offset: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + offset);
+  return d.toISOString().slice(0, 10);
 }
 
 const taskSeeds: TaskSeed[] = [
@@ -153,6 +162,8 @@ const taskSeeds: TaskSeed[] = [
     status: "done",
     assigneeEmail: "qa@demo.local",
     clientVisible: true,
+    deadlineDate: isoDay(-7),
+    deadlineTime: "17:00",
   },
   {
     title: "Backend API Integration",
@@ -161,6 +172,8 @@ const taskSeeds: TaskSeed[] = [
     status: "in_progress",
     assigneeEmail: "backend@demo.local",
     clientVisible: true,
+    deadlineDate: isoDay(1),
+    deadlineTime: "12:00",
   },
   {
     title: "Frontend Slicing",
@@ -169,6 +182,8 @@ const taskSeeds: TaskSeed[] = [
     status: "todo",
     assigneeEmail: "frontend@demo.local",
     clientVisible: false,
+    deadlineDate: isoDay(4),
+    deadlineTime: "09:00",
   },
 ];
 
@@ -186,18 +201,24 @@ for (const seed of taskSeeds) {
       ? mustGet(userByEmail, seed.assigneeEmail)
       : undefined,
     clientVisible: seed.clientVisible,
+    deadlineDate: seed.deadlineDate,
+    deadlineTime: seed.deadlineTime,
   });
 
   const existing = await prisma.task.findFirst({
     where: { title: seed.title, projectId: project.id },
   });
 
+  // Prisma wants a Date for the `@db.Date` column, not the `YYYY-MM-DD` string.
+  const prismaData = {
+    ...data,
+    status: seed.status,
+    deadlineDate: data.deadlineDate ? new Date(data.deadlineDate) : null,
+  };
+
   const row = existing
-    ? await prisma.task.update({
-      where: { id: existing.id },
-      data: { ...data, status: seed.status },
-    })
-    : await prisma.task.create({ data: { ...data, status: seed.status } });
+    ? await prisma.task.update({ where: { id: existing.id }, data: prismaData })
+    : await prisma.task.create({ data: prismaData });
 
   taskIdsByTitle.set(seed.title, row.id);
 }

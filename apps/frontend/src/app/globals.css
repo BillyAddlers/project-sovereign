@@ -47,74 +47,204 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Light "airy frosted" theme.
+ * Palette keeps the NodeWave soul (deep blue primary, sky accent) but opens the
+ * neutrals so frosted glass has somewhere bright to sit. Two cores (blue + neutral)
+ * and one accent (sky) = R-29.
+ */
 :root {
-  /* NodeWave palette: deep blue, sky accent, cool light surfaces. */
-  --background: #f6f9fc;
-  --foreground: #0f1b24;
+  color-scheme: light;
+
+  --background: #eef1f6;
+  --foreground: #0e1a26;
   --card: #ffffff;
-  --card-foreground: #0f1b24;
+  --card-foreground: #0e1a26;
   --popover: #ffffff;
-  --popover-foreground: #0f1b24;
-  --primary: #094c86;
+  --popover-foreground: #0e1a26;
+  --primary: #1668c9;
   --primary-foreground: #ffffff;
-  --secondary: #edf7fa;
-  --secondary-foreground: #094c86;
-  --muted: #edf7fa;
-  --muted-foreground: #566472;
-  --accent: #50b1d2;
-  --accent-foreground: #00162a;
+  --secondary: #e4edf6;
+  --secondary-foreground: #14477e;
+  --muted: #e7edf3;
+  --muted-foreground: #4d5b6e;
+  --accent: #38b6e6;
+  --accent-foreground: #062634;
   --destructive: #b42318;
-  --border: #d6e4ee;
-  --input: #d6e4ee;
-  --ring: #50b1d2;
-  --chart-1: #094c86;
+  --border: #ccd9e6;
+  --input: #c6d5e4;
+  --ring: #2a7de0;
+  --chart-1: #1668c9;
   --chart-2: #2a699f;
-  --chart-3: #50b1d2;
+  --chart-3: #38b6e6;
   --chart-4: #73c1db;
   --chart-5: #aacfef;
-  --radius: 0.75rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0f1b24;
-  --sidebar-primary: #094c86;
+  --radius: 1rem;
+
+  --sidebar: rgba(255, 255, 255, 0.7);
+  --sidebar-foreground: #0e1a26;
+  --sidebar-primary: #1668c9;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #edf7fa;
-  --sidebar-accent-foreground: #094c86;
-  --sidebar-border: #d6e4ee;
-  --sidebar-ring: #50b1d2;
+  --sidebar-accent: rgba(22, 104, 201, 0.1);
+  --sidebar-accent-foreground: #1668c9;
+  --sidebar-border: rgba(120, 150, 185, 0.28);
+  --sidebar-ring: #2a7de0;
+
+  /* Frosted-glass material. Reason: every surface reads as the same pane of
+     glass catching light (the declared full-immersion look), so the fill, edge
+     and top lip are shared tokens that flip with the theme. */
+  --glass-fill: rgba(255, 255, 255, 0.5);
+  --glass-fill-deep: rgba(255, 255, 255, 0.34);
+  --glass-chrome-fill: rgba(255, 255, 255, 0.66);
+  --glass-panel-fill: rgba(255, 255, 255, 0.74);
+  --glass-blur: 22px;
+  --glass-edge: rgba(120, 150, 185, 0.32);
+  --glass-lip: rgba(255, 255, 255, 0.95);
+  --glass-shadow: 0 10px 30px -14px rgba(24, 54, 94, 0.22);
+  --glass-shadow-sm: 0 4px 14px -8px rgba(24, 54, 94, 0.16);
+  --glass-shadow-lg: 0 20px 50px -18px rgba(24, 54, 94, 0.3);
+
+  /* Ambient wash that shows through the frosted panes. The whisper of violet and
+     mint keeps the glass from reading as flat white and gives the product its own
+     material identity (R-31: this is the one deliberate background gesture). */
+  --ambient-a: rgba(80, 177, 210, 0.3);
+  --ambient-b: rgba(150, 140, 245, 0.18);
+  --ambient-c: rgba(110, 210, 185, 0.16);
 }
 
 .dark {
-  --background: #0f1b24;
-  --foreground: #edf7fa;
-  --card: #12222e;
-  --card-foreground: #edf7fa;
-  --popover: #12222e;
-  --popover-foreground: #edf7fa;
-  --primary: #0c77f8;
-  --primary-foreground: #ffffff;
-  --secondary: #1b3a5b;
-  --secondary-foreground: #edf7fa;
-  --muted: #1b2b36;
-  --muted-foreground: #aacfef;
-  --accent: #50b1d2;
-  --accent-foreground: #00162a;
+  color-scheme: dark;
+
+  --background: #0b1220;
+  --foreground: #e8eef7;
+  --card: #131e2e;
+  --card-foreground: #e8eef7;
+  --popover: #131e2e;
+  --popover-foreground: #e8eef7;
+  --primary: #4d8ffd;
+  --primary-foreground: #06121f;
+  --secondary: #17263a;
+  --secondary-foreground: #dbe6f5;
+  --muted: #16222f;
+  --muted-foreground: #93a4bd;
+  --accent: #4cc3ee;
+  --accent-foreground: #062634;
   --destructive: #f97066;
-  --border: #1f3444;
-  --input: #1f3444;
-  --ring: #50b1d2;
-  --chart-1: #50b1d2;
+  --border: #24344a;
+  --input: #24344a;
+  --ring: #4cc3ee;
+  --chart-1: #4cc3ee;
   --chart-2: #73c1db;
-  --chart-3: #0c77f8;
+  --chart-3: #4d8ffd;
   --chart-4: #aacfef;
   --chart-5: #2a699f;
-  --sidebar: #0f1b24;
-  --sidebar-foreground: #edf7fa;
-  --sidebar-primary: #0c77f8;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1b2b36;
-  --sidebar-accent-foreground: #edf7fa;
-  --sidebar-border: #1f3444;
-  --sidebar-ring: #50b1d2;
+  --radius: 1rem;
+
+  --sidebar: rgba(15, 24, 38, 0.66);
+  --sidebar-foreground: #e8eef7;
+  --sidebar-primary: #4d8ffd;
+  --sidebar-primary-foreground: #06121f;
+  --sidebar-accent: rgba(77, 143, 253, 0.16);
+  --sidebar-accent-foreground: #9cc4ff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #4cc3ee;
+
+  --glass-fill: rgba(19, 30, 46, 0.42);
+  --glass-fill-deep: rgba(19, 30, 46, 0.3);
+  --glass-chrome-fill: rgba(15, 24, 38, 0.6);
+  --glass-panel-fill: rgba(17, 26, 40, 0.72);
+  --glass-blur: 22px;
+  --glass-edge: rgba(255, 255, 255, 0.12);
+  --glass-lip: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.55);
+  --glass-shadow-sm: 0 4px 14px -8px rgba(0, 0, 0, 0.45);
+  --glass-shadow-lg: 0 20px 50px -18px rgba(0, 0, 0, 0.7);
+
+  --ambient-a: rgba(77, 143, 253, 0.24);
+  --ambient-b: rgba(150, 110, 250, 0.16);
+  --ambient-c: rgba(76, 195, 238, 0.14);
+}
+
+/*
+ * Glass surfaces. Full-immersion glass is a recorded R-10 override; the fill
+ * stays opaque enough that body text clears WCAG AA over it (R-25 / R-34).
+ */
+.glass {
+  background-color: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-lip),
+    var(--glass-shadow);
+}
+
+/* Stronger refraction: thinner fill + deeper blur so the ambient wash reads
+   clearly through the surface (used on task cards). */
+.glass-deep {
+  background-color: var(--glass-fill-deep);
+  -webkit-backdrop-filter: blur(30px) saturate(1.6);
+  backdrop-filter: blur(30px) saturate(1.6);
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-lip),
+    var(--glass-shadow);
+}
+
+/* Chrome (sidebar, top bar): a touch more opaque so text stays crisp over
+   whatever scrolls behind it. */
+.glass-chrome {
+  background-color: var(--glass-chrome-fill);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  backdrop-filter: blur(30px) saturate(1.5);
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-lip),
+    var(--glass-shadow-sm);
+}
+
+/* Panels that must hold crisp text (dialogs, select menus, toasts). */
+.glass-panel {
+  background-color: var(--glass-panel-fill);
+  -webkit-backdrop-filter: blur(36px) saturate(1.6);
+  backdrop-filter: blur(36px) saturate(1.6);
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-lip),
+    var(--glass-shadow-lg);
+}
+
+/* Extra elevation so modals / floating panels clearly sit above the page. */
+.glass-float {
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-lip),
+    0 34px 64px -18px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Hover lift: a single hover state (MOTION dial 1), not a decorative float. */
+.glass-lift {
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms ease;
+}
+.glass-lift:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-lip),
+    var(--glass-shadow-lg);
+}
+.glass-lift:focus-within {
+  transform: none;
+}
+
+/* Frosted toast: sonner sets the fill via --normal-bg, blur + lip come from here. */
+.cn-toast {
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  backdrop-filter: blur(20px) saturate(1.5);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-lip),
+    var(--glass-shadow-lg);
 }
 
 @layer base {
@@ -122,10 +252,22 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: var(--background);
+    /* The ambient wash lives on the body so every frosted pane has soft color to
+       blur. Static (no loop) to honor MOTION 1: hover states only. */
+    background-image:
+      radial-gradient(58rem 58rem at 12% 6%, var(--ambient-a) 0%, transparent 62%),
+      radial-gradient(50rem 50rem at 90% 2%, var(--ambient-b) 0%, transparent 58%),
+      radial-gradient(54rem 54rem at 80% 94%, var(--ambient-c) 0%, transparent 60%),
+      radial-gradient(44rem 44rem at 2% 90%, var(--ambient-a) 0%, transparent 56%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    min-height: 100dvh;
   }
   html {
     @apply font-sans;
+    scrollbar-gutter: stable;
   }
   /* Selection inherits the accent, so highlighted type stays in the palette. */
   ::selection {

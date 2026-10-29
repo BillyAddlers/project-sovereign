@@ -60,6 +60,8 @@ export function serializeTask(task: TaskWithRelations, actor: Actor) {
     priority: task.priority,
     projectId: task.projectId,
     clientVisible: task.clientVisible,
+    deadlineDate: task.deadlineDate ? task.deadlineDate.toISOString().slice(0, 10) : null,
+    deadlineTime: task.deadlineTime,
     version: task.version,
     blocked,
     createdAt: task.createdAt,

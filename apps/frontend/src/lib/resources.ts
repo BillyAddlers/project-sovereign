@@ -2,11 +2,14 @@ import { del, get, patch, post, upload } from "@/lib/api";
 import {
   type Attachment,
   attachmentSchema,
+  type CreateProjectInput,
   type CreateTaskInput,
   type DependencyRef,
+  type Project,
   type ProjectList,
   type ProjectStats,
   projectListSchema,
+  projectSchema,
   projectStatsSchema,
   type Task,
   type TaskList,
@@ -47,6 +50,11 @@ export async function fetchProjects(): Promise<ProjectList> {
 
 export async function fetchProjectStats(projectId: string): Promise<ProjectStats> {
   return projectStatsSchema.parse(await get<ProjectStats>(`/projects/${projectId}/stats`));
+}
+
+/** PM-only project creation. */
+export async function createProject(input: CreateProjectInput): Promise<Project> {
+  return projectSchema.parse(await post<Project, CreateProjectInput>("/projects", input));
 }
 
 /** PM-only directory used by the assignee picker. */
