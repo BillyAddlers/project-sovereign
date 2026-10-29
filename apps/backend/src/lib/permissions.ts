@@ -24,6 +24,8 @@ export interface TaskLike {
 export interface ProjectAccess {
   isMember: boolean;
   isClient: boolean;
+  /** The viewer holds an assigned task in this project (engineer scope). */
+  hasAssignedTask: boolean;
 }
 
 export type Decision = { allowed: true } | { allowed: false; reason: string };
@@ -38,7 +40,8 @@ export function canViewProject(actor: Actor, access: ProjectAccess): boolean {
     case "pm":
       return true;
     case "engineer":
-      return access.isMember;
+      // A member, or anyone holding an assigned task in the project.
+      return access.isMember || access.hasAssignedTask;
     case "client":
       return access.isClient;
   }

@@ -32,7 +32,12 @@ export function projectScope(actor: Actor): Prisma.ProjectWhereInput {
     case "engineer":
       return {
         deletedAt: null,
-        members: { some: { userId: actor.id } },
+        // Visible if the engineer is a member OR holds an assigned task here:
+        // they can't be expected to join every project they contribute to.
+        OR: [
+          { members: { some: { userId: actor.id } } },
+          { tasks: { some: { assigneeId: actor.id, deletedAt: null } } },
+        ],
       };
     case "client":
       return { deletedAt: null, clientId: actor.id };

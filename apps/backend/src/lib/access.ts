@@ -16,6 +16,13 @@ export async function projectAccessFor(
     select: {
       clientId: true,
       members: { where: { userId }, select: { userId: true } },
+      // Engineers must see projects where they hold an assigned task, even if
+      // they were never added as a member.
+      tasks: {
+        where: { assigneeId: userId, deletedAt: null },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
 
@@ -24,5 +31,6 @@ export async function projectAccessFor(
   return {
     isMember: project.members.length > 0,
     isClient: project.clientId === userId,
+    hasAssignedTask: project.tasks.length > 0,
   };
 }

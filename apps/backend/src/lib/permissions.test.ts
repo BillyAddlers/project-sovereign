@@ -24,9 +24,10 @@ const engineer: Actor = { id: "eng-id", role: "engineer" };
 const otherEngineer: Actor = { id: "eng-other", role: "engineer" };
 const client: Actor = { id: "client-id", role: "client" };
 
-const member: ProjectAccess = { isMember: true, isClient: false };
-const outsider: ProjectAccess = { isMember: false, isClient: false };
-const owner: ProjectAccess = { isMember: false, isClient: true };
+const member: ProjectAccess = { isMember: true, isClient: false, hasAssignedTask: false };
+const outsider: ProjectAccess = { isMember: false, isClient: false, hasAssignedTask: false };
+const owner: ProjectAccess = { isMember: false, isClient: true, hasAssignedTask: false };
+const contributor: ProjectAccess = { isMember: false, isClient: false, hasAssignedTask: true };
 
 const task = (overrides: Partial<TaskLike> = {}): TaskLike => ({
   id: "task-1",
@@ -46,6 +47,7 @@ describe("read access", () => {
   it("engineers only see tasks assigned to them", () => {
     expect(canViewProject(engineer, member)).toBe(true);
     expect(canViewProject(engineer, outsider)).toBe(false);
+    expect(canViewProject(engineer, contributor)).toBe(true); // assigned a task there
     expect(canViewTask(engineer, task(), member)).toBe(true); // assigneeId === eng-id
     expect(canViewTask(engineer, task(), outsider)).toBe(true); // assignment, not membership
     expect(canViewTask(engineer, task({ assigneeId: "eng-other" }), member)).toBe(false);
