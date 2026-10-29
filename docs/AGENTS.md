@@ -239,7 +239,7 @@ and task state.
 | Actor    | Reads                                                             | Writes                                                                                     |
 | -------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | PM       | all live projects and tasks, audit trail, engineer directory      | create/edit/delete tasks and projects, assign, set `clientVisible`, define dependencies, manage members — but **cannot move any task into `done`** |
-| Engineer | projects they are a member of; **only tasks assigned to them**   | status on a task assigned to them only, forward only (`todo → in_progress → done`); upload attachments to an assigned task |
+| Engineer | projects they are a member of **or hold an assigned task in**; **only tasks assigned to them**   | status on a task assigned to them only, forward only (`todo → in_progress → done`); upload attachments to an assigned task |
 | Client   | own project (`Project.clientId`), `clientVisible` tasks, stats    | nothing                                                                                    |
 
 Additional invariants:
@@ -250,7 +250,7 @@ Additional invariants:
 - PM cannot complete work; the assignee is the only actor who may enter `done`.
 - `taskScope` in `src/lib/scope.ts` is the only source of row visibility
   (`pm`: all live; `engineer`: `assigneeId = actor.id`; `client`: own project **and**
-  `clientVisible`). `projectScope` mirrors it. A missing scope is a bug, not a
+  `clientVisible`). `projectScope` mirrors it (engineer: member **or** an assigned task in the project). A missing scope is a bug, not a
   fallback — never write an unscoped query on a user-facing route.
 - `canViewAttachment` denies clients entirely. On a task the client can see,
   the attachment **list** returns 403; attachment **download** returns 404 so a
@@ -372,11 +372,13 @@ Structure:
 ```
 src/app/
 ├── layout.tsx              # fonts, Providers, Toaster
+├── globals.css             # Tailwind + the glass design system (see /DESIGN.md)
 ├── login/page.tsx          # RHF + Zod login, demo-account panel
 └── (app)/
     ├── layout.tsx          # AuthGuard + AppShell, wraps every protected page
-    ├── page.tsx            # DashboardView (stats + at-a-glance tasks)
-    └── board/page.tsx      # TaskBoard (three columns, per-role actions)
+    ├── page.tsx            # DashboardView (project cards + detail modal)
+    ├── board/page.tsx      # TaskBoard (columns, drag-and-drop, filters)
+    └── calendar/page.tsx   # CalendarView (month grid of task deadlines)
 ```
 
 - The session gate is **client-side** (`AuthGuard` + `useSession`, `retry:
@@ -415,6 +417,31 @@ src/app/
 - The login page hardcodes the seeded demo accounts and password `password123`.
   If `prisma/seed.ts` changes, update that panel too.
 
+### UI system (glass, theme, modals, board)
+
+The full visual direction lives in [`DESIGN.md`](../DESIGN.md); the
+implementation is `src/app/globals.css`. Key conventions:
+
+- **Glass surfaces** are CSS classes (`.glass`, `.glass-chrome`, `.glass-panel`,
+  `.glass-deep`, `.glass-float`) driven by theme variables. Full-immersion glass
+  is a recorded antislop **R-10 override** (see DESIGN.md) — reuse these classes
+  instead of hand-rolling blur.
+- **Theme** is light/dark only via `next-themes` (`attribute="class"`, the
+  `.dark` class on `<html>`). The toggle (`components/theme-toggle.tsx`) cycles
+  light ↔ dark only, never "system".
+- **Modals** use the unified `radix-ui` `Dialog` inside a `Portal` so they are
+  **screen-centered**. A `fixed` element rendered inside a `backdrop-filter`
+  ancestor is trapped by that ancestor and centers on it instead, so always
+  portal dialogs. Components: `confirm-dialog`, `create-task-dialog`,
+  `create-project-dialog`, `project-detail-dialog`, `task-detail-dialog`.
+- **Board**: task cards are **draggable** (forward-only status moves; invalid
+  drops blocked by `canMoveTo`) alongside **Start/Complete** buttons (the
+  keyboard path). Columns highlight as drop targets. Project + deadline
+  filtering is client-side.
+- **Deadlines**: `deadlineDate` (a date) + `deadlineTime` (`HH:MM`, 24-hour).
+  The time field auto-formats while typing via `formatTimeInput`
+  (`lib/utils.ts`); Zod's `timeOfDaySchema` validates `HH:MM`.
+
 ## 10. Prisma 7 specifics
 
 Prisma 7 differs from 5/6 in ways that will break you if you assume otherwise:
@@ -435,7 +462,8 @@ Prisma 7 differs from 5/6 in ways that will break you if you assume otherwise:
   endpoint only responds when Postgres is actually up. `/api/health` proves
   connectivity only — never that the schema was migrated.
 - Migrations live in `prisma/migrations/` (`20261001082345_init`,
-  `20261004174035`, `20261009140949_add_qa_department`). Prefer
+  `20261004174035`, `20261009140949_add_qa_department`,
+  `20261029115040_add_task_deadline`). Prefer
   `bun run db:migrate` over `db:push`; `db:push` leaves state that makes the
   next `migrate dev` demand a full reset. Containers use `prisma migrate deploy`
   via `scripts/docker-entrypoint.sh`.
@@ -452,7 +480,8 @@ makes sense):
   is never a member.
 - `Task`: `title`, `description`, `status` (`todo` | `in_progress` | `done`),
   `priority` (`low` | `medium` | `high`), `projectId`, optional `assigneeId`,
-  `clientVisible`, `deletedAt`, `version` (locking).
+  `clientVisible`, optional `deadlineDate` (a date) + `deadlineTime` (`HH:MM`,
+  24-hour), `deletedAt`, `version` (locking).
 - `TaskDependency`: composite `(taskId, dependsOnId)`.
 - `AuditLog`: `taskId`, `userId`, `action` (`create` | `update` | `delete`),
   `changedColumn`, `oldValue`, `newValue`, `timestamp`.
